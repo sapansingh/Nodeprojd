@@ -1,0 +1,14 @@
+{
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "cookie-parser": "^1.4.7",
+    "express": "^5.1.0",
+    "express-rate-limit": "^8.0.1",
+    "helmet": "^8.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "mysql2": "^3.14.3",
+    "path": "^0.12.7",
+    "socket.io": "^4.8.1",
+    "sqlite3": "^5.1.7"
+  }
+}

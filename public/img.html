@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Multi Image Thumbnail Creator</title>
+  <style>
+    body { font-family: Arial; text-align: center; padding: 20px; }
+    canvas { border: 1px solid #ccc; margin-top: 10px; display: block; margin: 0 auto; }
+    input, button { margin: 10px; padding: 8px; }
+  </style>
+</head>
+<body>
+
+  <h1>Multi Image Thumbnail Creator</h1>
+
+  <input type="file" id="upload" accept="image/*" multiple><br>
+
+  <label>Thumb Width: <input type="number" id="thumbWidth" value="150"></label>
+  <label>Thumb Height: <input type="number" id="thumbHeight" value="150"></label><br>
+
+  <button onclick="processImages()">Create Combined Thumbnail</button>
+  <button onclick="downloadCanvas()">Download Combined Image</button><br>
+
+  <canvas id="canvas"></canvas>
+
+  <script>
+    const uploadInput = document.getElementById('upload');
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+
+    let imageFiles = [];
+
+    uploadInput.addEventListener('change', (e) => {
+      imageFiles = Array.from(e.target.files);
+    });
+
+    async function processImages() {
+      const thumbWidth = parseInt(document.getElementById('thumbWidth').value, 10);
+      const thumbHeight = parseInt(document.getElementById('thumbHeight').value, 10);
+      const images = await loadImages(imageFiles);
+
+      // Determine grid layout (3 columns or fewer if not enough images)
+      const columns = Math.min(3, images.length);
+      const rows = Math.ceil(images.length / columns);
+
+      // Set canvas size based on layout
+      canvas.width = columns * thumbWidth;
+      canvas.height = rows * thumbHeight;
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      images.forEach((img, index) => {
+        const x = (index % columns) * thumbWidth;
+        const y = Math.floor(index / columns) * thumbHeight;
+        ctx.drawImage(img, x, y, thumbWidth, thumbHeight);
+      });
+    }
+
+    function loadImages(files) {
+      const promises = files.map(file => {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => resolve(img);
+            img.onerror = reject;
+            img.src = e.target.result;
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+      });
+      return Promise.all(promises);
+    }
+
+    function downloadCanvas() {
+      const link = document.createElement('a');
+      link.download = 'combined_thumbnail.png';
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    }
+  </script>
+
+</body>
+</html>

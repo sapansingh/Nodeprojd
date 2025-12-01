@@ -1,3 +1,5 @@
 /node_modules
 /scrap
 /server.js
+uploads/*
+!uploads/.gitkeep

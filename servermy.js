@@ -10,7 +10,7 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 
 const io = new Server(server, { maxHttpBufferSize: 1e8 });
-app.use(express.json()); // Parse JSON body
+app.use(express.json());
 
 // JWT secret key
 const JWT_SECRET = "7877618775";
@@ -20,6 +20,7 @@ const UPLOAD_DIR = path.join(__dirname, 'uploads');
 if (!fs.existsSync(UPLOAD_DIR)) {
     fs.mkdirSync(UPLOAD_DIR);
 }
+app.use(express.static(path.join(__dirname, 'public/sounds/')));
 
 // MySQL setup
 const db = mysql.createPool({
@@ -34,7 +35,8 @@ db.query(`
     CREATE TABLE IF NOT EXISTS users (
         id INT AUTO_INCREMENT PRIMARY KEY,
         username VARCHAR(255) UNIQUE,
-        password VARCHAR(255)
+        password VARCHAR(255),
+        last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     )
 `);
 db.query(`
@@ -73,13 +75,24 @@ app.post('/api/login', (req, res) => {
         const match = await bcrypt.compare(password, user.password);
         if (!match) return res.status(400).json({ error: "Invalid credentials" });
 
-        const token = jwt.sign({ username: user.username }, JWT_SECRET, { expiresIn: '1h' });
+        const token = jwt.sign({ username: user.username }, JWT_SECRET, { expiresIn: '24h' });
 
-        // Send username along with token
+        // Update last_seen timestamp
+        db.query(`UPDATE users SET last_seen = CURRENT_TIMESTAMP WHERE username = ?`, [username]);
+
         res.json({ token, username: user.username });
     });
 });
 
+// Get all users (for showing online/offline status)
+app.get('/api/users', verifyToken, (req, res) => {
+    db.query(`SELECT username, last_seen FROM users WHERE username != ? ORDER BY username`, 
+        [req.user.username], 
+        (err, results) => {
+            if (err) return res.status(500).json({ error: "Database error" });
+            res.json(results);
+        });
+});
 
 // Middleware to verify JWT for protected pages
 function verifyToken(req, res, next) {
@@ -92,15 +105,15 @@ function verifyToken(req, res, next) {
         next();
     });
 }
+
 app.get('/register', (req, res) => {
     res.sendFile(path.join(__dirname, 'public/register.html'));
 });
-// Serve chat only if authenticated
+
 app.get('/chat', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// Serve login page without authentication
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public/login.html'));
 });
@@ -108,7 +121,7 @@ app.get('/', (req, res) => {
 app.use('/uploads', express.static(UPLOAD_DIR));
 
 // ------------------ SOCKET.IO ------------------
-let users = [];
+let onlineUsers = []; // Track currently online users
 
 io.use((socket, next) => {
     const token = socket.handshake.auth?.token;
@@ -124,78 +137,219 @@ io.use((socket, next) => {
 io.on('connection', (socket) => {
     console.log(`User connected: ${socket.username}`);
 
-    if (!users.includes(socket.username)) {
-        users.push(socket.username);
-        io.emit('update user list', users);
-        socket.broadcast.emit('joinuser', `${socket.username} has joined the chat.`);
-        socket.emit('set title', socket.username);
+    // Add user to online users
+    if (!onlineUsers.includes(socket.username)) {
+        onlineUsers.push(socket.username);
+        
+        // Update last_seen timestamp in database
+        db.query(`UPDATE users SET last_seen = CURRENT_TIMESTAMP WHERE username = ?`, [socket.username]);
     }
+
+    // Send complete user list to ALL connected clients
+    sendCompleteUserListToAll();
+
+    socket.broadcast.emit('joinuser', `${socket.username} has joined the chat.`);
+    socket.emit('set title', socket.username);
+
+    // Get all registered users (for showing online/offline status)
+    socket.on('get registered users', () => {
+        console.log(`[DEBUG] ${socket.username} requested registered users`);
+        sendCompleteUserListToAll();
+    });
 
     // Private chat history
     socket.on('get history', (data) => {
         const withUser = data.withUser;
+        const offset = data.offset || 0;
+        const limit = data.limit || 10;
+        
         db.query(`
             SELECT * FROM messages
             WHERE (sender = ? AND recipient = ?)
                OR (sender = ? AND recipient = ?)
-            ORDER BY timestamp ASC
-        `, [socket.username, withUser, withUser, socket.username], (err, results) => {
-            if (!err) socket.emit('history', results);
+            ORDER BY timestamp DESC
+            LIMIT ? OFFSET ?
+        `, [socket.username, withUser, withUser, socket.username, limit, offset], (err, results) => {
+            if (!err) {
+                // Reverse to get chronological order
+                socket.emit('history', results.reverse());
+            } else {
+                console.error('Error fetching history:', err);
+            }
         });
     });
 
     // Broadcast history
-    socket.on('get broadcast history', () => {
-        db.query(`SELECT * FROM messages WHERE recipient = 'ALL' ORDER BY timestamp ASC`, (err, results) => {
-            if (!err) socket.emit('history', results);
+    socket.on('get broadcast history', (data) => {
+        const offset = data.offset || 0;
+        const limit = data.limit || 60;
+        
+        db.query(`
+            SELECT * FROM messages 
+            WHERE recipient = 'ALL' 
+            ORDER BY timestamp DESC 
+            LIMIT ? OFFSET ?
+        `, [limit, offset], (err, results) => {
+            if (!err) {
+                // Reverse to get chronological order
+                socket.emit('history', results.reverse());
+            } else {
+                console.error('Error fetching broadcast history:', err);
+            }
         });
     });
 
-    // Private message
+    // Private message - FIXED VERSION
     socket.on('private message', (msg) => {
+        console.log('Private message received:', msg);
+        
+        // First store the message in database
         db.query(`INSERT INTO messages (sender, recipient, message) VALUES (?, ?, ?)`,
-            [msg.sender, msg.recipient, msg.message]);
+            [msg.sender, msg.recipient, msg.message],
+            (err, result) => {
+                if (err) {
+                    console.error('Error storing private message:', err);
+                    return;
+                }
+                
+                console.log('Private message stored in database with ID:', result.insertId);
+                
+                // Get the complete message from database to ensure we have correct timestamp
+                db.query(`SELECT * FROM messages WHERE id = ?`, [result.insertId], (err, results) => {
+                    if (err || results.length === 0) {
+                        console.error('Error fetching stored message:', err);
+                        return;
+                    }
+                    
+                    const storedMessage = results[0];
+                    const messageObj = {
+                        id: storedMessage.id,
+                        sender: storedMessage.sender,
+                        recipient: storedMessage.recipient,
+                        message: storedMessage.message,
+                        filename: storedMessage.filename,
+                        filepath: storedMessage.filepath,
+                        timestamp: storedMessage.timestamp
+                    };
 
-        const recipientSocket = Array.from(io.sockets.sockets.values())
-            .find(s => s.username === msg.recipient);
+                    // Send to recipient if online
+                    const recipientSocket = Array.from(io.sockets.sockets.values())
+                        .find(s => s.username === msg.recipient);
 
-        if (recipientSocket) recipientSocket.emit('private message', msg);
-        socket.emit('private message', msg);
+                    if (recipientSocket) {
+                        recipientSocket.emit('private message', messageObj);
+                    }
+                    
+                    // Also send back to sender for confirmation
+                    socket.emit('private message', messageObj);
+                });
+            });
     });
 
-    // Broadcast message
+    // Broadcast message - FIXED VERSION
     socket.on('broadcast message', (message) => {
+        console.log('Broadcast message received:', message);
+        
+        // First store the message in database
         db.query(`INSERT INTO messages (sender, recipient, message) VALUES (?, 'ALL', ?)`,
-            [socket.username, message]);
-        io.emit('broadcast message', { sender: socket.username, message });
+            [socket.username, message],
+            (err, result) => {
+                if (err) {
+                    console.error('Error storing broadcast message:', err);
+                    return;
+                }
+                
+                console.log('Broadcast message stored in database with ID:', result.insertId);
+                
+                // Get the complete message from database to ensure we have correct timestamp
+                db.query(`SELECT * FROM messages WHERE id = ?`, [result.insertId], (err, results) => {
+                    if (err || results.length === 0) {
+                        console.error('Error fetching stored broadcast message:', err);
+                        return;
+                    }
+                    
+                    const storedMessage = results[0];
+                    const messageObj = {
+                        id: storedMessage.id,
+                        sender: storedMessage.sender,
+                        recipient: storedMessage.recipient,
+                        message: storedMessage.message,
+                        filename: storedMessage.filename,
+                        filepath: storedMessage.filepath,
+                        timestamp: storedMessage.timestamp
+                    };
+                    
+                    // Broadcast to all connected clients
+                    io.emit('broadcast message', messageObj);
+                });
+            });
     });
 
-    // File sharing
-    socket.on('file', (data) => {
-        const fileBuffer = Buffer.from(data.file);
-        const uniqueName = Date.now() + '-' + data.filename;
-        const filePath = path.join(UPLOAD_DIR, uniqueName);
+    // File sharing - FIXED VERSION (matches your table structure)
+    socket.on('file', (data, callback) => {
+        console.log('File upload received:', data.filename, 'Size:', data.fileSize);
+        
+        try {
+            const fileBuffer = Buffer.from(data.file);
+            const uniqueName = Date.now() + '-' + data.filename;
+            const filePath = path.join(UPLOAD_DIR, uniqueName);
 
-        fs.writeFileSync(filePath, fileBuffer);
+            fs.writeFileSync(filePath, fileBuffer);
 
-        const fileLink = `/uploads/${uniqueName}`;
-        db.query(`INSERT INTO messages (sender, recipient, filename, filepath) VALUES (?, ?, ?, ?)`,
-            [data.sender, data.recipient, data.filename, fileLink]);
+            const fileLink = `/uploads/${uniqueName}`;
+            
+            // Store file info in database (only columns that exist in your table)
+            db.query(`INSERT INTO messages (sender, recipient, filename, filepath) VALUES (?, ?, ?, ?)`,
+                [data.sender, data.recipient, data.filename, fileLink],
+                (err, result) => {
+                    if (err) {
+                        console.error('Error storing file message:', err);
+                        if (callback) callback({ error: 'Database error' });
+                        return;
+                    }
+                    
+                    console.log('File message stored in database with ID:', result.insertId);
+                    
+                    // Get the complete file message from database
+                    db.query(`SELECT * FROM messages WHERE id = ?`, [result.insertId], (err, results) => {
+                        if (err || results.length === 0) {
+                            console.error('Error fetching stored file message:', err);
+                            if (callback) callback({ error: 'Error fetching stored file' });
+                            return;
+                        }
+                        
+                        const storedMessage = results[0];
+                        const fileMessage = {
+                            id: storedMessage.id,
+                            sender: storedMessage.sender,
+                            recipient: storedMessage.recipient,
+                            filename: storedMessage.filename,
+                            filepath: storedMessage.filepath,
+                            fileSize: data.fileSize, // Include fileSize in the message object for client
+                            fileType: data.fileType, // Include fileType in the message object for client
+                            timestamp: storedMessage.timestamp
+                        };
 
-        const payload = {
-            sender: data.sender,
-            recipient: data.recipient,
-            filename: data.filename,
-            filepath: fileLink
-        };
-
-        if (data.recipient === 'ALL') {
-            io.emit('file', payload);
-        } else {
-            const toSocket = Array.from(io.sockets.sockets.values())
-                .find(s => s.username === data.recipient);
-            if (toSocket) toSocket.emit('file', payload);
-            socket.emit('file', payload);
+                        if (data.recipient === 'ALL') {
+                            // Broadcast to all
+                            io.emit('file', fileMessage);
+                        } else {
+                            // Send to specific recipient
+                            const recipientSocket = Array.from(io.sockets.sockets.values())
+                                .find(s => s.username === data.recipient);
+                            if (recipientSocket) {
+                                recipientSocket.emit('file', fileMessage);
+                            }
+                            // Also send back to sender
+                            socket.emit('file', fileMessage);
+                        }
+                        
+                        if (callback) callback({ success: true });
+                    });
+                });
+        } catch (error) {
+            console.error('Error processing file upload:', error);
+            if (callback) callback({ error: 'File processing error' });
         }
     });
 
@@ -214,10 +368,58 @@ io.on('connection', (socket) => {
 
     // Disconnect
     socket.on('disconnect', () => {
-        users = users.filter(u => u !== socket.username);
-        io.emit('update user list', users);
+        console.log(`User disconnected: ${socket.username}`);
+        onlineUsers = onlineUsers.filter(u => u !== socket.username);
+        
+        // Update last_seen timestamp when user disconnects
+        db.query(`UPDATE users SET last_seen = CURRENT_TIMESTAMP WHERE username = ?`, [socket.username]);
+        
+        // Notify other users about the updated user list
+        sendCompleteUserListToAll();
         socket.broadcast.emit('disconnecteduser', `${socket.username} has left the chat.`);
     });
+
+    // Function to send complete user list to ALL clients
+    function sendCompleteUserListToAll() {
+        console.log(`[DEBUG] Sending user list to all clients. Online users: ${onlineUsers.length}`);
+        
+        // Get ALL users from database (excluding current user)
+        db.query(`SELECT username, last_seen FROM users WHERE username != ? ORDER BY username`, 
+            [socket.username], 
+            (err, results) => {
+                if (err) {
+                    console.error('[ERROR] Database error fetching users:', err);
+                    return;
+                }
+                
+                console.log(`[DEBUG] Database returned ${results.length} users:`);
+                results.forEach(user => {
+                    console.log(`  - ${user.username} (last_seen: ${user.last_seen})`);
+                });
+                
+                // Create user list with online/offline status
+                const userList = results.map(user => ({
+                    username: user.username,
+                    is_online: onlineUsers.includes(user.username),
+                    last_seen: user.last_seen
+                }));
+                
+                const onlineCount = userList.filter(user => user.is_online).length;
+                const offlineCount = userList.filter(user => !user.is_online).length;
+                
+                console.log(`[DEBUG] Sending: ${onlineCount} online, ${offlineCount} offline users`);
+                console.log(`[DEBUG] Online users:`, onlineUsers);
+                console.log(`[DEBUG] Full user list:`, userList);
+                
+                // Send to ALL connected clients
+                io.emit('registered users', {
+                    allUsers: userList,
+                    onlineUsers: onlineUsers
+                });
+                
+                console.log(`[DEBUG] User list sent to all clients`);
+            });
+    }
 });
 
 server.listen(3000, () => {

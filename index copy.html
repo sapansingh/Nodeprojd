@@ -479,8 +479,30 @@
             gap: 16px;
             max-width: 800px;
             margin: 0 auto;
+             min-height: calc(100% + 1px); /* Force scrollbar */
         }
+.loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    color: var(--text-muted);
+    gap: 10px;
+}
 
+.loading .spinner {
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--border-light);
+    border-top: 2px solid var(--primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
         .message {
             max-width: 70%;
             padding: 16px 20px;
@@ -488,6 +510,7 @@
             position: relative;
             animation: messageSlide 0.3s ease-out;
             box-shadow: var(--shadow-sm);
+            flex-shrink: 0;
         }
 
         @keyframes messageSlide {
@@ -1132,22 +1155,16 @@
                             <div class="chat-header">
                                 <span class="chat-name">Broadcast Channel</span>
                             </div>
-                             
                             <div class="chat-last-message">Send messages to everyone</div>
                         </div>
-                        
                     </li>
-                    <div onclick="forceScrollToBottom()">Scroll down</div>
                 </ul>
 
                 <div class="section-header">Active Conversations</div>
                 <ul class="chat-list" id="usersList">
                     <div class="loading">
                         <div class="spinner"></div>
-
-                        
                     </div>
-                   
                 </ul>
             </div>
         </div>
@@ -1262,14 +1279,9 @@
     <div id="notificationContainer"></div>
 
     <script src="/socket.io/socket.io.js"></script>
- <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js" integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-<script>
-$('.messages-container').animate({
-    scrollTop: $('.messages-container')[0].scrollHeight
-}, 300);
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
 
-
-
+    <script>
     class EMRIGHS {
         constructor() {
             this.socket = null;
@@ -1289,14 +1301,13 @@ $('.messages-container').animate({
             this.isLoadingMessages = false;
             this.hasMoreMessages = true;
             this.messageOffset = 0;
-            this.MESSAGES_PER_LOAD = 20;
+            this.MESSAGES_PER_LOAD = 60;
             this.autoScrollEnabled = true;
             this.initialLoad = true;
             this.scrollPositionBeforeLoad = 0;
             
             this.initializeApp();
         }
-        
 
         initializeApp() {
             this.checkAuthentication();
@@ -1308,14 +1319,287 @@ $('.messages-container').animate({
             this.setupPasteHandler();
         }
 
+        // FIXED SCROLLING FUNCTIONS
+    // FIXED SCROLLING FUNCTIONS
+forceScrollToBottom() {
+    const $messagesScroll = $('#messagesScroll');
+    if (!$messagesScroll.length) {
+        console.log('Messages scroll element not found');
+        return;
+    }
+
+    console.log('Scrolling to bottom...');
+    
+    const scrollToBottom = () => {
+        const scrollHeight = $messagesScroll[0].scrollHeight;
+        const clientHeight = $messagesScroll[0].clientHeight;
+        const currentScroll = $messagesScroll.scrollTop();
+        
+        console.log('ScrollHeight:', scrollHeight, 'ClientHeight:', clientHeight, 'CurrentScroll:', currentScroll);
+        
+        // CHECK: If content fits perfectly, no scroll needed
+        if (scrollHeight <= clientHeight) {
+            console.log('All content fits in container - no scroll needed');
+            return;
+        }
+        
+        // CHECK: If already at bottom, no scroll needed
+        const distanceFromBottom = scrollHeight - currentScroll - clientHeight;
+        if (distanceFromBottom <= 1) {
+            console.log('Already at bottom - no scroll needed');
+            return;
+        }
+        
+        console.log('Scrolling needed - distance from bottom:', distanceFromBottom);
+        
+        // Method 1: Direct scroll
+        $messagesScroll.scrollTop(scrollHeight);
+        
+        // Method 2: Native element scroll
+        $messagesScroll[0].scrollTop = scrollHeight;
+        
+        // Method 3: Verify scroll worked
+        setTimeout(() => {
+            const newScroll = $messagesScroll.scrollTop();
+            const newDistance = scrollHeight - newScroll - clientHeight;
+            
+            console.log('After scroll - New scroll:', newScroll, 'New distance:', newDistance);
+            
+            if (newDistance > 10) {
+                console.log('Scroll incomplete, retrying...');
+                $messagesScroll.scrollTop(scrollHeight);
+                $messagesScroll[0].scrollTop = scrollHeight;
+            } else {
+                console.log('Scroll successful!');
+            }
+        }, 50);
+    };
+
+    // Only attempt scroll if needed
+    scrollToBottom();
+    
+    // Additional attempts only if first attempt determined scrolling is needed
+    setTimeout(() => {
+        const scrollHeight = $messagesScroll[0].scrollHeight;
+        const clientHeight = $messagesScroll[0].clientHeight;
+        const currentScroll = $messagesScroll.scrollTop();
+        const distanceFromBottom = scrollHeight - currentScroll - clientHeight;
+        
+        // Only retry if not at bottom and content exceeds container
+        if (scrollHeight > clientHeight && distanceFromBottom > 10) {
+            console.log('Retry scroll attempt...');
+            $messagesScroll.scrollTop(scrollHeight);
+        }
+    }, 100);
+}
+        smoothScrollToBottom() {
+            const $messagesScroll = $('#messagesScroll');
+            if (!$messagesScroll.length) return;
+            
+            $messagesScroll.stop().animate({
+                scrollTop: $messagesScroll[0].scrollHeight
+            }, 400);
+        }
+
+        isUserNearBottom(threshold = 200) {
+            const $messagesScroll = $('#messagesScroll');
+            if (!$messagesScroll.length) return true;
+            
+            const scrollTop = $messagesScroll.scrollTop();
+            const scrollHeight = $messagesScroll[0].scrollHeight;
+            const clientHeight = $messagesScroll[0].clientHeight;
+            const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+            
+            return distanceFromBottom <= threshold;
+        }
+
+        // ENHANCED MESSAGE HANDLING WITH RELIABLE SCROLLING
+     renderMessages(msgs, isLoadMore = false) {
+    const $messagesScroll = $('#messagesScroll');
+    if (!$messagesScroll.length) return;
+    
+    $messagesScroll.find('.loading').remove();
+    
+    if (!msgs || msgs.length === 0) {
+        if (!isLoadMore) {
+            $messagesScroll.html(`
+                <div style="text-align: center; padding: 40px; color: var(--text-muted);">
+                    <i class="fas fa-comments" style="font-size: 3rem; margin-bottom: 16px; opacity: 0.5;"></i>
+                    <p>No messages yet</p>
+                    <small>Start the conversation!</small>
+                </div>
+            `);
+        }
+        this.hasMoreMessages = false;
+        this.isLoadingMessages = false;
+        return;
+    }
+
+    const validMessages = msgs.filter(msg => msg && typeof msg === 'object');
+    console.log('Valid messages to render:', validMessages.length, 'isLoadMore:', isLoadMore);
+
+    // FIXED: Properly check if there are more messages to load
+    if (validMessages.length < this.MESSAGES_PER_LOAD) {
+        this.hasMoreMessages = false;
+        console.log('No more messages to load');
+    }
+
+    if (isLoadMore) {
+        // FIXED: Store current scroll position before adding new messages
+        const currentScrollTop = $messagesScroll.scrollTop();
+        const currentScrollHeight = $messagesScroll[0].scrollHeight;
+        
+        const fragment = document.createDocumentFragment();
+        validMessages.forEach(msg => {
+            const messageElement = this.createMessageElement(msg);
+            if (messageElement) {
+                fragment.appendChild(messageElement);
+            }
+        });
+        
+        // Prepend new messages
+        $messagesScroll.prepend(fragment);
+        
+        // FIXED: Calculate new scroll position to maintain user's view
+        const newScrollHeight = $messagesScroll[0].scrollHeight;
+        const heightDifference = newScrollHeight - currentScrollHeight;
+        
+        // Set scroll position to maintain the user's reading position
+        $messagesScroll.scrollTop(currentScrollTop + heightDifference);
+        
+        console.log('Loaded more messages. Height difference:', heightDifference);
+        
+    } else {
+        // Initial load - clear and add all messages
+        $messagesScroll.empty();
+        validMessages.forEach(msg => {
+            const messageElement = this.createMessageElement(msg);
+            if (messageElement) {
+                $messagesScroll.append(messageElement);
+            }
+        });
+        
+        // FIXED: Always scroll to bottom on initial load
+        setTimeout(() => {
+            this.forceScrollToBottom();
+        }, 100);
+        
+        this.initialLoad = false;
+    }
+    
+    this.isLoadingMessages = false;
+}
+        handleIncomingMessage(message) {
+            console.log('Received message:', message);
+            
+            if (message.isOptimistic) {
+                return;
+            }
+            
+            const shouldDisplay = 
+                (this.currentChat === 'broadcast' && message.recipient === 'ALL') ||
+                (this.currentChat === message.sender) || 
+                (this.currentChat === message.recipient);
+            
+            if (shouldDisplay) {
+                const messageElement = this.createMessageElement(message);
+                const $messagesScroll = $('#messagesScroll');
+                if ($messagesScroll.length) {
+                    $messagesScroll.append(messageElement);
+                    
+                    const isUserAtBottom = this.isUserNearBottom();
+                    const isFromCurrentUser = message.sender === this.currentUser;
+                    
+                    if (isUserAtBottom || isFromCurrentUser) {
+                        setTimeout(() => {
+                            this.forceScrollToBottom();
+                        }, 50);
+                    }
+                }
+            } else {
+                this.showNotification(`New message from ${message.sender}`, 'info');
+            }
+        }
+
+        async sendMessage() {
+            const $input = $('#messageInput');
+            if (!$input.length || !this.currentChat) return;
+            
+            const message = $input.val().trim();
+            if (!message) return;
+            
+            try {
+                $input.val('');
+                this.autoResizeTextarea();
+                
+                const optimisticMessage = {
+                    sender: this.currentUser,
+                    message: message,
+                    timestamp: new Date().toISOString(),
+                    isOptimistic: true
+                };
+                
+                const messageElement = this.createMessageElement(optimisticMessage);
+                const $messagesScroll = $('#messagesScroll');
+                if ($messagesScroll.length) {
+                    $messagesScroll.append(messageElement);
+                    
+                    // FIXED: Always scroll when user sends message
+                    setTimeout(() => {
+                        this.forceScrollToBottom();
+                    }, 50);
+                }
+                
+                if (this.currentChat === 'broadcast') {
+                    this.socket.emit('broadcast message', message);
+                } else {
+                    this.socket.emit('private message', {
+                        sender: this.currentUser,
+                        recipient: this.currentChat,
+                        message: message
+                    });
+                }
+                
+            } catch (error) {
+                this.showNotification('Failed to send message', 'error');
+            }
+        }
+
+        async sendFiles() {
+            if (this.pendingFiles.length === 0 || !this.currentChat) return;
+
+            try {
+                this.showNotification(`Uploading ${this.pendingFiles.length} file(s)...`, 'info');
+                
+                this.hideUploadPreview();
+                
+                for (const file of this.pendingFiles) {
+                    await this.uploadFile(file);
+                }
+                
+                this.showNotification(`Successfully sent ${this.pendingFiles.length} file(s)`, 'success');
+                this.pendingFiles = [];
+                
+                // FIXED: Scroll after file upload
+                setTimeout(() => {
+                    this.forceScrollToBottom();
+                }, 100);
+                
+            } catch (error) {
+                this.showNotification(`Failed to send files: ${error.message}`, 'error');
+                console.error('File upload error:', error);
+            }
+        }
+
+        // REST OF YOUR METHODS REMAIN THE SAME
         setupPasteHandler() {
-            document.addEventListener('paste', (e) => {
+            $(document).on('paste', (e) => {
                 if (!this.currentChat) {
                     this.showNotification('Please select a conversation first', 'error');
                     return;
                 }
 
-                const items = e.clipboardData?.items;
+                const items = e.originalEvent.clipboardData?.items;
                 if (!items) return;
 
                 const files = [];
@@ -1335,75 +1619,69 @@ $('.messages-container').animate({
         }
 
         setupFileUpload() {
-            const dropZone = document.getElementById('dropZone');
-            const messageContainer = document.getElementById('messageInputContainer');
+            const $dropZone = $('#dropZone');
+            const $messageContainer = $('#messageInputContainer');
 
-            // Prevent default drag behaviors
             ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-                messageContainer.addEventListener(eventName, this.preventDefaults, false);
-                document.body.addEventListener(eventName, this.preventDefaults, false);
+                $messageContainer.on(eventName, this.preventDefaults);
+                $(document.body).on(eventName, this.preventDefaults);
             });
 
-            // Highlight drop zone when item is dragged over it
             ['dragenter', 'dragover'].forEach(eventName => {
-                messageContainer.addEventListener(eventName, (e) => {
+                $messageContainer.on(eventName, (e) => {
                     e.preventDefault();
-                    const dropZone = document.getElementById('dropZone');
-                    if (dropZone) {
-                        dropZone.style.display = 'block';
-                        dropZone.style.borderColor = 'var(--primary)';
-                        dropZone.style.background = 'var(--bg-secondary)';
-                    }
-                }, false);
+                    $dropZone
+                        .show()
+                        .css({
+                            'border-color': 'var(--primary)',
+                            'background': 'var(--bg-secondary)'
+                        });
+                });
             });
 
             ['dragleave', 'drop'].forEach(eventName => {
-                messageContainer.addEventListener(eventName, (e) => {
+                $messageContainer.on(eventName, (e) => {
                     e.preventDefault();
-                    const dropZone = document.getElementById('dropZone');
-                    if (dropZone) dropZone.style.display = 'none';
-                }, false);
+                    $dropZone.hide();
+                });
             });
 
-            // Handle dropped files
-            messageContainer.addEventListener('drop', (e) => {
+            $messageContainer.on('drop', (e) => {
                 e.preventDefault();
-                const dt = e.dataTransfer;
+                const dt = e.originalEvent.dataTransfer;
                 const files = dt.files;
                 this.handleDroppedFiles(files);
-            }, false);
+            });
 
-            // Upload preview events
-            document.getElementById('previewClose').addEventListener('click', () => {
+            $('#previewClose').on('click', () => {
                 this.hideUploadPreview();
             });
 
-            document.getElementById('cancelUpload').addEventListener('click', () => {
+            $('#cancelUpload').on('click', () => {
                 this.hideUploadPreview();
                 this.pendingFiles = [];
             });
 
-            document.getElementById('sendFiles').addEventListener('click', () => {
+            $('#sendFiles').on('click', () => {
                 this.sendFiles();
             });
 
-            // File input events
-            document.getElementById('attachBtn').addEventListener('click', () => {
-                document.getElementById('fileInput').click();
+            $('#attachBtn').on('click', () => {
+                $('#fileInput').click();
             });
 
-            document.getElementById('imageBtn').addEventListener('click', () => {
-                document.getElementById('imageInput').click();
+            $('#imageBtn').on('click', () => {
+                $('#imageInput').click();
             });
 
-            document.getElementById('fileInput').addEventListener('change', (e) => {
+            $('#fileInput').on('change', (e) => {
                 this.handleDroppedFiles(e.target.files);
-                e.target.value = '';
+                $(e.target).val('');
             });
 
-            document.getElementById('imageInput').addEventListener('change', (e) => {
+            $('#imageInput').on('change', (e) => {
                 this.handleDroppedFiles(e.target.files);
-                e.target.value = '';
+                $(e.target).val('');
             });
         }
 
@@ -1422,8 +1700,7 @@ $('.messages-container').animate({
 
             const fileArray = Array.from(files);
             
-            // Filter out files that are too large (10MB limit)
-            const MAX_FILE_SIZE = 10 * 1024 * 1024;
+            const MAX_FILE_SIZE = 100 * 1024 * 1024;
             const validFiles = fileArray.filter(file => {
                 if (file.size > MAX_FILE_SIZE) {
                     this.showNotification(`File ${file.name} is too large (max 10MB)`, 'error');
@@ -1440,60 +1717,36 @@ $('.messages-container').animate({
         }
 
         showUploadPreview() {
-            const uploadPreview = document.getElementById('uploadPreview');
-            const previewList = document.getElementById('previewList');
+            const $uploadPreview = $('#uploadPreview');
+            const $previewList = $('#previewList');
             
-            previewList.innerHTML = '';
+            $previewList.empty();
 
             this.pendingFiles.forEach((file, index) => {
-                const fileElement = document.createElement('div');
-                fileElement.className = 'preview-item';
-                fileElement.innerHTML = `
-                    <div class="file-icon">${this.getFileIcon(file)}</div>
-                    <div class="preview-info">
-                        <div class="preview-name">${file.name}</div>
-                        <div class="preview-size">${this.formatFileSize(file.size)}</div>
+                const fileElement = $(`
+                    <div class="preview-item">
+                        <div class="file-icon">${this.getFileIcon(file)}</div>
+                        <div class="preview-info">
+                            <div class="preview-name">${file.name}</div>
+                            <div class="preview-size">${this.formatFileSize(file.size)}</div>
+                        </div>
+                        <button class="preview-close">&times;</button>
                     </div>
-                    <button class="preview-close" onclick="chat.removePendingFile(${index})">&times;</button>
-                `;
-                previewList.appendChild(fileElement);
+                `);
+                
+                fileElement.find('.preview-close').on('click', () => {
+                    this.removePendingFile(index);
+                });
+                
+                $previewList.append(fileElement);
             });
 
-            document.getElementById('sendFiles').textContent = `Send ${this.pendingFiles.length} File(s)`;
-            uploadPreview.style.display = 'block';
+            $('#sendFiles').text(`Send ${this.pendingFiles.length} File(s)`);
+            $uploadPreview.show();
         }
 
         hideUploadPreview() {
-            const uploadPreview = document.getElementById('uploadPreview');
-            if (uploadPreview) {
-                uploadPreview.style.display = 'none';
-            }
-        }
-
-        async sendFiles() {
-            if (this.pendingFiles.length === 0 || !this.currentChat) return;
-
-            try {
-                this.showNotification(`Uploading ${this.pendingFiles.length} file(s)...`, 'info');
-                
-                // Close the popup immediately when send is clicked
-                this.hideUploadPreview();
-                
-                // Upload files after closing popup
-                for (const file of this.pendingFiles) {
-                    await this.uploadFile(file);
-                }
-                
-                this.showNotification(`Successfully sent ${this.pendingFiles.length} file(s)`, 'success');
-                this.pendingFiles = [];
-                
-                // Scroll to bottom after sending files
-                this.forceScrollToBottom();
-                
-            } catch (error) {
-                this.showNotification(`Failed to send files: ${error.message}`, 'error');
-                console.error('File upload error:', error);
-            }
+            $('#uploadPreview').hide();
         }
 
         removePendingFile(index) {
@@ -1588,88 +1841,88 @@ $('.messages-container').animate({
                 return this.createErrorMessage('Invalid message format');
             }
             
-            const messageDiv = document.createElement('div');
             const isSender = msg.sender === this.currentUser;
-            
             const isFileMessage = msg.filename || msg.filepath;
             
             if (isFileMessage) {
-                messageDiv.className = `message ${isSender ? 'message-sent' : 'message-received'}`;
                 const time = this.formatTimestamp(msg.timestamp);
-                
                 const fileName = msg.filename || 'Unknown File';
                 const fileExt = fileName.split('.').pop().toLowerCase();
                 const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'].includes(fileExt);
                 const fileUrl = msg.filepath;
                 
-                messageDiv.innerHTML = `
-                    <div class="message-header">
-                        <span class="message-sender">${msg.sender || 'Unknown'}</span>
-                        <span class="message-time">${time}</span>
-                    </div>
-                    <div class="file-message">
-                        <div class="file-icon">${this.getFileIcon({name: fileName})}</div>
-                        <div class="file-info">
-                            <div class="file-name">${fileName}</div>
-                            <div class="file-size">${msg.fileSize ? this.formatFileSize(msg.fileSize) : 'File'}</div>
-                            ${isImage && fileUrl ? `
-                                <div style="margin-top: 8px;">
-                                    <img src="${fileUrl}" class="image-message" onclick="chat.previewImage('${fileUrl}')" 
-                                         style="max-width: 200px; max-height: 200px; border-radius: 8px; cursor: pointer; border: 1px solid var(--border-light);"
-                                         onerror="this.style.display='none'">
-                                </div>
+                const messageDiv = $(`
+                    <div class="message ${isSender ? 'message-sent' : 'message-received'}">
+                        <div class="message-header">
+                            <span class="message-sender">${msg.sender || 'Unknown'}</span>
+                            <span class="message-time">${time}</span>
+                        </div>
+                        <div class="file-message">
+                            <div class="file-icon">${this.getFileIcon({name: fileName})}</div>
+                            <div class="file-info">
+                                <div class="file-name">${fileName}</div>
+                                <div class="file-size">${msg.fileSize ? this.formatFileSize(msg.fileSize) : 'File'}</div>
+                                ${isImage && fileUrl ? `
+                                    <div style="margin-top: 8px;">
+                                        <img src="${fileUrl}" class="image-message" 
+                                             style="max-width: 200px; max-height: 200px; border-radius: 8px; cursor: pointer; border: 1px solid var(--border-light);"
+                                             onerror="this.style.display='none'">
+                                    </div>
+                                ` : ''}
+                            </div>
+                            ${fileUrl ? `
+                                <a href="${fileUrl}" download="${fileName}" class="action-btn" style="text-decoration: none; color: inherit;" title="Download ${fileName}">
+                                    <i class="fas fa-download"></i>
+                                </a>
                             ` : ''}
                         </div>
-                        ${fileUrl ? `
-                            <a href="${fileUrl}" download="${fileName}" class="action-btn" style="text-decoration: none; color: inherit;" title="Download ${fileName}">
-                                <i class="fas fa-download"></i>
-                            </a>
-                        ` : ''}
                     </div>
-                `;
+                `);
+                
+                if (isImage && fileUrl) {
+                    messageDiv.find('img').on('click', () => {
+                        this.previewImage(fileUrl);
+                    });
+                }
+                
+                return messageDiv[0];
             } else if (msg.message) {
-                messageDiv.className = `message ${isSender ? 'message-sent' : 'message-received'}`;
                 const time = this.formatTimestamp(msg.timestamp);
                 
-                messageDiv.innerHTML = `
-                    <div class="message-header">
-                        <span class="message-sender">${msg.sender || 'Unknown'}</span>
-                        <span class="message-time">${time}</span>
+                return $(`
+                    <div class="message ${isSender ? 'message-sent' : 'message-received'}">
+                        <div class="message-header">
+                            <span class="message-sender">${msg.sender || 'Unknown'}</span>
+                            <span class="message-time">${time}</span>
+                        </div>
+                        <div class="message-content">${this.escapeHtml(msg.message)}</div>
                     </div>
-                    <div class="message-content">${this.escapeHtml(msg.message)}</div>
-                `;
+                `)[0];
             } else {
                 return this.createSystemMessage(msg);
             }
-            
-            return messageDiv;
         }
 
         createErrorMessage(text) {
-            const messageDiv = document.createElement('div');
-            messageDiv.className = 'message message-system';
-            messageDiv.textContent = text || 'Error loading message';
-            return messageDiv;
+            return $(`<div class="message message-system">${text || 'Error loading message'}</div>`)[0];
         }
 
         createSystemMessage(msg) {
-            const messageDiv = document.createElement('div');
-            messageDiv.className = 'message message-system';
-            
+            let messageText = '';
             if (typeof msg === 'string') {
-                messageDiv.textContent = msg;
+                messageText = msg;
             } else if (msg.sender && msg.message) {
-                messageDiv.textContent = `${msg.sender}: ${msg.message}`;
+                messageText = `${msg.sender}: ${msg.message}`;
             } else {
-                messageDiv.textContent = 'System message';
+                messageText = 'System message';
             }
             
-            return messageDiv;
+            return $(`<div class="message message-system">${messageText}</div>`)[0];
         }
 
         previewImage(src) {
-            document.getElementById('modalImage').src = src;
-            document.getElementById('imageModal').style.display = 'flex';
+            $('#modalImage').attr('src', src);
+            $('#imageModal').css('display', 'flex');
         }
 
         checkAuthentication() {
@@ -1682,7 +1935,7 @@ $('.messages-container').animate({
             }
             
             this.currentUser = username;
-            document.getElementById('usernameDisplay').textContent = username;
+            $('#usernameDisplay').text(username);
             this.updateUserAvatar('userAvatar', username);
         }
 
@@ -1722,12 +1975,7 @@ $('.messages-container').animate({
                     return;
                 }
                 
-                // Debug: Check what's actually in allUsers
-                console.log('First user in allUsers:', data.allUsers[0]);
-                console.log('Type of first user:', typeof data.allUsers[0]);
-                
                 const users = data.allUsers.map(user => {
-                    // Handle both object and string formats
                     const username = typeof user === 'string' ? user : user.username;
                     const is_online = data.onlineUsers ? data.onlineUsers.includes(username) : false;
                     const last_seen = user.last_seen || new Date().toISOString();
@@ -1741,7 +1989,6 @@ $('.messages-container').animate({
                 });
                 
                 console.log('Processed users:', users);
-                
                 this.users = users;
                 this.renderUsers(users);
             });
@@ -1811,62 +2058,50 @@ $('.messages-container').animate({
         }
 
         setupEventListeners() {
-            // Message sending
-            document.getElementById('sendBtn').addEventListener('click', () => this.sendMessage());
-            document.getElementById('messageInput').addEventListener('keypress', (e) => {
+            $('#sendBtn').on('click', () => this.sendMessage());
+            $('#messageInput').on('keypress', (e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
                     this.sendMessage();
                 }
             });
 
-            // Auto-resize textarea
-            document.getElementById('messageInput').addEventListener('input', () => {
+            $('#messageInput').on('input', () => {
                 this.autoResizeTextarea();
             });
 
-            // Emoji handling
-            document.getElementById('emojiBtn').addEventListener('click', () => this.showEmojiPicker());
-            document.getElementById('closeEmojiModal').addEventListener('click', () => this.hideEmojiPicker());
+            $('#emojiBtn').on('click', () => this.showEmojiPicker());
+            $('#closeEmojiModal').on('click', () => this.hideEmojiPicker());
 
-            // Theme toggle
-            document.getElementById('themeToggle').addEventListener('click', () => this.toggleTheme());
+            $('#themeToggle').on('click', () => this.toggleTheme());
 
-            // Logout
-            document.getElementById('logoutBtn').addEventListener('click', () => this.logout());
+            $('#logoutBtn').on('click', () => this.logout());
 
-            // Mobile menu
-            document.getElementById('mobileMenuBtn').addEventListener('click', () => {
-                document.getElementById('sidebar').classList.toggle('active');
+            $('#mobileMenuBtn').on('click', () => {
+                $('#sidebar').toggleClass('active');
             });
 
-            // Broadcast chat
-            document.querySelector('.broadcast-item').addEventListener('click', () => {
+            $('.broadcast-item').on('click', () => {
                 this.selectChat('broadcast');
             });
 
-            // Search functionality
-            document.getElementById('userSearch').addEventListener('input', (e) => this.filterUsers(e.target.value));
+            $('#userSearch').on('input', (e) => this.filterUsers($(e.target).val()));
 
-            // User click handling
-            document.getElementById('usersList').addEventListener('click', (e) => {
-                const chatItem = e.target.closest('.chat-item');
-                if (chatItem && chatItem.dataset.username) {
-                    const username = chatItem.dataset.username;
+            $('#usersList').on('click', '.chat-item', (e) => {
+                const username = $(e.currentTarget).data('username');
+                if (username) {
                     this.selectChat(username);
-                    document.getElementById('sidebar').classList.remove('active');
+                    $('#sidebar').removeClass('active');
                 }
             });
 
-            // Scroll-based loading
-            document.getElementById('messagesScroll').addEventListener('scroll', () => {
+            $('#messagesScroll').on('scroll', () => {
                 this.handleScroll();
                 this.checkAutoScroll();
             });
 
-            // Typing indicators
             let typingTimer;
-            document.getElementById('messageInput').addEventListener('input', () => {
+            $('#messageInput').on('input', () => {
                 if (this.currentChat && this.currentChat !== 'broadcast') {
                     this.socket.emit('typing', { recipient: this.currentChat });
                     clearTimeout(typingTimer);
@@ -1876,40 +2111,40 @@ $('.messages-container').animate({
                 }
             });
 
-            // Close image modal
-            document.getElementById('closeImageModal').addEventListener('click', () => {
-                document.getElementById('imageModal').style.display = 'none';
+            $('#closeImageModal').on('click', () => {
+                $('#imageModal').hide();
             });
         }
 
         filterUsers(query) {
-            const userItems = document.querySelectorAll('.chat-item[data-username]');
+            const $userItems = $('.chat-item[data-username]');
             const searchTerm = query.toLowerCase().trim();
             
             let hasVisibleUsers = false;
-            userItems.forEach(item => {
-                const username = item.dataset.username.toLowerCase();
+            $userItems.each(function() {
+                const username = $(this).data('username').toLowerCase();
                 if (username.includes(searchTerm)) {
-                    item.style.display = 'flex';
+                    $(this).show();
                     hasVisibleUsers = true;
                 } else {
-                    item.style.display = 'none';
+                    $(this).hide();
                 }
             });
 
-            const usersList = document.getElementById('usersList');
-            let noUsersMessage = usersList.querySelector('.no-users-message');
+            const $usersList = $('#usersList');
+            let $noUsersMessage = $usersList.find('.no-users-message');
             
             if (!hasVisibleUsers && searchTerm) {
-                if (!noUsersMessage) {
-                    noUsersMessage = document.createElement('div');
-                    noUsersMessage.className = 'no-users-message';
-                    noUsersMessage.style.cssText = 'text-align: center; padding: 20px; color: var(--text-muted); font-style: italic;';
-                    noUsersMessage.textContent = 'No users found';
-                    usersList.appendChild(noUsersMessage);
+                if ($noUsersMessage.length === 0) {
+                    $noUsersMessage = $(`
+                        <div class="no-users-message" style="text-align: center; padding: 20px; color: var(--text-muted); font-style: italic;">
+                            No users found
+                        </div>
+                    `);
+                    $usersList.append($noUsersMessage);
                 }
-            } else if (noUsersMessage) {
-                noUsersMessage.remove();
+            } else {
+                $noUsersMessage.remove();
             }
         }
 
@@ -1924,35 +2159,29 @@ $('.messages-container').animate({
             this.autoScrollEnabled = true;
             this.initialLoad = true;
             
-            // Show chat interface
-            document.getElementById('welcomeScreen').style.display = 'none';
-            document.getElementById('chatHeader').style.display = 'flex';
-            document.getElementById('messagesContainer').style.display = 'block';
-            document.getElementById('messageInputContainer').style.display = 'block';
+            $('#welcomeScreen').hide();
+            $('#chatHeader').show();
+            $('#messagesContainer').show();
+            $('#messageInputContainer').show();
             
             this.loadMessages(username);
             
-            document.querySelectorAll('.chat-item').forEach(item => {
-                item.classList.remove('active');
-                if (item.dataset.username === username || (username === 'broadcast' && item.classList.contains('broadcast-item'))) {
-                    item.classList.add('active');
-                }
-            });
+            $('.chat-item').removeClass('active');
+            $(`.chat-item[data-username="${username}"], .broadcast-item`).addClass('active');
         }
 
         loadMessages(chatId) {
             console.log('Loading messages for:', chatId);
-            const messagesScroll = document.getElementById('messagesScroll');
-            if (!messagesScroll) return;
+            const $messagesScroll = $('#messagesScroll');
+            if (!$messagesScroll.length) return;
             
-            // Reset pagination for new chat
             this.messageOffset = 0;
             this.hasMoreMessages = true;
             this.isLoadingMessages = false;
             this.initialLoad = true;
             
-            messagesScroll.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
-            messagesScroll.scrollTop = 0;
+            $messagesScroll.html('<div class="loading"><div class="spinner"></div></div>');
+            $messagesScroll.scrollTop(0);
             
             if (chatId === 'broadcast') {
                 console.log('Requesting broadcast history with pagination');
@@ -1970,261 +2199,17 @@ $('.messages-container').animate({
             }
         }
 
-        renderMessages(msgs, isLoadMore = false) {
-            console.log('Rendering messages:', msgs, 'isLoadMore:', isLoadMore);
-            const messagesScroll = document.getElementById('messagesScroll');
-            if (!messagesScroll) return;
-            
-            const loadingIndicator = messagesScroll.querySelector('.loading');
-            if (loadingIndicator) {
-                loadingIndicator.remove();
-            }
-            
-            if (!msgs || msgs.length === 0) {
-                if (!isLoadMore) {
-                    messagesScroll.innerHTML = `
-                        <div style="text-align: center; padding: 40px; color: var(--text-muted);">
-                            <i class="fas fa-comments" style="font-size: 3rem; margin-bottom: 16px; opacity: 0.5;"></i>
-                            <p>No messages yet</p>
-                            <small>Start the conversation!</small>
-                        </div>
-                    `;
-                }
-                this.hasMoreMessages = false;
-                this.isLoadingMessages = false;
-                return;
-            }
-
-            const validMessages = msgs.filter(msg => {
-                if (!msg || typeof msg !== 'object') {
-                    console.warn('Filtering out invalid message:', msg);
-                    return false;
-                }
-                return true;
-            });
-
-            console.log('Valid messages to render:', validMessages.length);
-
-            // Check if we have more messages to load
-            if (validMessages.length < this.MESSAGES_PER_LOAD) {
-                this.hasMoreMessages = false;
-            }
-
-            if (isLoadMore) {
-                // For loading more messages (scroll up)
-                const scrollTop = messagesScroll.scrollTop;
-                const scrollHeight = messagesScroll.scrollHeight;
-                
-                const fragment = document.createDocumentFragment();
-                validMessages.forEach(msg => {
-                    const messageElement = this.createMessageElement(msg);
-                    if (messageElement) {
-                        fragment.appendChild(messageElement);
-                    }
-                });
-                
-                // Insert at the top for older messages
-                messagesScroll.insertBefore(fragment, messagesScroll.firstChild);
-                
-                const newScrollHeight = messagesScroll.scrollHeight;
-                messagesScroll.scrollTop = scrollTop + (newScrollHeight - scrollHeight);
-            } else {
-                // For initial load or new chat
-                messagesScroll.innerHTML = '';
-                validMessages.forEach(msg => {
-                    const messageElement = this.createMessageElement(msg);
-                    if (messageElement) {
-                        messagesScroll.appendChild(messageElement);
-                    }
-                });
-                
-                // Always scroll to bottom on initial load
-                setTimeout(() => {
-                    this.forceScrollToBottom();
-                }, 100);
-                
-                this.initialLoad = false;
-            }
-            
-            this.isLoadingMessages = false;
-        }
-
         addSystemMessage(msg) {
-            const messagesScroll = document.getElementById('messagesScroll');
-            if (!messagesScroll) return;
+            const $messagesScroll = $('#messagesScroll');
+            if (!$messagesScroll.length) return;
             
-            const messageDiv = document.createElement('div');
-            messageDiv.className = 'message message-system';
-            messageDiv.textContent = msg;
-            messagesScroll.appendChild(messageDiv);
+            const $messageDiv = $(`<div class="message message-system">${msg}</div>`);
+            $messagesScroll.append($messageDiv);
             this.forceScrollToBottom();
         }
 
-        handleIncomingMessage(message) {
-            console.log('Received message:', message);
-            
-            // Skip if this is an optimistic message we already showed
-            if (message.isOptimistic) {
-                return;
-            }
-            
-            const shouldDisplay = 
-                (this.currentChat === 'broadcast' && message.recipient === 'ALL') ||
-                (this.currentChat === message.sender) || 
-                (this.currentChat === message.recipient);
-            
-            if (shouldDisplay) {
-                const messageElement = this.createMessageElement(message);
-                const messagesScroll = document.getElementById('messagesScroll');
-                if (messagesScroll) {
-                    messagesScroll.appendChild(messageElement);
-                    
-                    // Auto scroll only if user is at bottom or it's a new message from current user
-                    const isUserAtBottom = this.isUserNearBottom();
-                    const isFromCurrentUser = message.sender === this.currentUser;
-                    
-                    if (isUserAtBottom || isFromCurrentUser) {
-                        setTimeout(() => {
-                            this.forceScrollToBottom();
-                        }, 100);
-                    }
-                }
-            } else {
-                this.showNotification(`New message from ${message.sender}`, 'info');
-            }
-        }
-
-        isUserNearBottom() {
-            const messagesScroll = document.getElementById('messagesScroll');
-            if (!messagesScroll) return true;
-            
-            const scrollTop = messagesScroll.scrollTop;
-            const scrollHeight = messagesScroll.scrollHeight;
-            const clientHeight = messagesScroll.clientHeight;
-            const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
-            
-            // Consider user near bottom if within 200px from bottom
-            return distanceFromBottom <= 200;
-        }
-
-        async sendMessage() {
-            const input = document.getElementById('messageInput');
-            if (!input || !this.currentChat) return;
-            
-            const message = input.value.trim();
-            if (!message) return;
-            
-            try {
-                // Clear input immediately
-                input.value = '';
-                this.autoResizeTextarea();
-                
-                // Create optimistic message (only show this once)
-                const optimisticMessage = {
-                    sender: this.currentUser,
-                    message: message,
-                    timestamp: new Date().toISOString(),
-                    isOptimistic: true // Mark as optimistic
-                };
-                
-                const messageElement = this.createMessageElement(optimisticMessage);
-                const messagesScroll = document.getElementById('messagesScroll');
-                if (messagesScroll) {
-                    messagesScroll.appendChild(messageElement);
-                    
-                    // Always scroll to bottom when user sends a message
-                    setTimeout(() => {
-                        this.forceScrollToBottom();
-                    }, 50);
-                }
-                
-                // Send to server
-                if (this.currentChat === 'broadcast') {
-                    this.socket.emit('broadcast message', message);
-                } else {
-                    this.socket.emit('private message', {
-                        sender: this.currentUser,
-                        recipient: this.currentChat,
-                        message: message
-                    });
-                }
-                
-            } catch (error) {
-                this.showNotification('Failed to send message', 'error');
-            }
-        }
-
-        // Enhanced scroll functions
-        forceScrollToBottom() {
-            const messagesScroll = document.getElementById('messagesScroll');
-            if (!messagesScroll) return;
-            
-            // Multiple attempts to ensure scroll works
-            const scrollToBottom = () => {
-                messagesScroll.scrollTop = messagesScroll.scrollHeight;
-            };
-            
-            // Immediate scroll
-            scrollToBottom();
-            
-            // Scroll after a short delay (for DOM updates)
-            setTimeout(scrollToBottom, 50);
-            
-            // One more scroll after render cycle
-            setTimeout(scrollToBottom, 150);
-            
-            console.log('Forced scroll to bottom executed');
-        }
-
-        smoothScrollToBottom() {
-            const messagesScroll = document.getElementById('messagesScroll');
-            if (!messagesScroll) return;
-            
-            messagesScroll.scrollTo({
-                top: messagesScroll.scrollHeight,
-                behavior: 'smooth'
-            });
-        }
-
-        scrollToBottom() {
-            const messagesScroll = document.getElementById('messagesScroll');
-            if (messagesScroll) {
-                messagesScroll.scrollTop = messagesScroll.scrollHeight;
-            }
-        }
-
-        scrollToMessage(messageId) {
-            const messagesScroll = document.getElementById('messagesScroll');
-            if (!messagesScroll) return;
-            
-            const messageElement = messagesScroll.querySelector(`[data-message-id="${messageId}"]`);
-            if (messageElement) {
-                messageElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }
-        }
-
-        scrollToTop() {
-            const messagesScroll = document.getElementById('messagesScroll');
-            if (messagesScroll) {
-                messagesScroll.scrollTop = 0;
-            }
-        }
-
-        isScrolledToBottom() {
-            const messagesScroll = document.getElementById('messagesScroll');
-            if (!messagesScroll) return true;
-            
-            const scrollTop = messagesScroll.scrollTop;
-            const scrollHeight = messagesScroll.scrollHeight;
-            const clientHeight = messagesScroll.clientHeight;
-            
-            return Math.abs(scrollHeight - scrollTop - clientHeight) < 10;
-        }
-
         escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
+            return $('<div>').text(text).html();
         }
 
         formatTimestamp(isoString) {
@@ -2239,10 +2224,9 @@ $('.messages-container').animate({
         }
 
         autoResizeTextarea() {
-            const textarea = document.getElementById('messageInput');
-            if (textarea) {
-                textarea.style.height = 'auto';
-                textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
+            const $textarea = $('#messageInput');
+            if ($textarea.length) {
+                $textarea.css('height', 'auto').css('height', Math.min($textarea[0].scrollHeight, 120) + 'px');
             }
         }
 
@@ -2285,34 +2269,27 @@ $('.messages-container').animate({
         }
 
         updateUserAvatar(elementId, username) {
-            const avatar = document.getElementById(elementId);
-            if (avatar) {
-                avatar.textContent = username.charAt(0).toUpperCase();
-                avatar.style.background = this.getAvatarColor(username);
+            const $avatar = $(`#${elementId}`);
+            if ($avatar.length) {
+                $avatar.text(username.charAt(0).toUpperCase()).css('background', this.getAvatarColor(username));
             }
         }
 
         updateChatHeader(username) {
-            const partnerName = document.getElementById('chatPartnerName');
-            const partnerStatus = document.getElementById('partnerStatus');
-            const partnerAvatar = document.getElementById('partnerAvatar');
+            const $partnerName = $('#chatPartnerName');
+            const $partnerStatus = $('#partnerStatus');
+            const $partnerAvatar = $('#partnerAvatar');
             
             if (username === 'broadcast') {
-                if (partnerName) partnerName.textContent = 'Broadcast Channel';
-                if (partnerStatus) partnerStatus.textContent = 'Send messages to everyone';
-                if (partnerAvatar) {
-                    partnerAvatar.innerHTML = '<i class="fas fa-bullhorn"></i>';
-                    partnerAvatar.style.background = 'linear-gradient(135deg, #8b5cf6, #a78bfa)';
-                }
+                $partnerName.text('Broadcast Channel');
+                $partnerStatus.text('Send messages to everyone');
+                $partnerAvatar.html('<i class="fas fa-bullhorn"></i>').css('background', 'linear-gradient(135deg, #8b5cf6, #a78bfa)');
             } else {
                 const user = this.users.find(u => u.username === username);
                 if (user) {
-                    if (partnerName) partnerName.textContent = user.username;
-                    if (partnerStatus) partnerStatus.textContent = user.is_online ? 'Online' : 'Offline';
-                    if (partnerAvatar) {
-                        partnerAvatar.textContent = user.username.charAt(0).toUpperCase();
-                        partnerAvatar.style.background = this.getAvatarColor(user.username);
-                    }
+                    $partnerName.text(user.username);
+                    $partnerStatus.text(user.is_online ? 'Online' : 'Offline');
+                    $partnerAvatar.text(user.username.charAt(0).toUpperCase()).css('background', this.getAvatarColor(user.username));
                 }
             }
         }
@@ -2324,39 +2301,39 @@ $('.messages-container').animate({
         }
 
         applyTheme() {
-            const themeToggle = document.getElementById('themeToggle');
+            const $themeToggle = $('#themeToggle');
             if (this.isDarkMode) {
-                document.body.classList.add('dark-mode');
-                if (themeToggle) themeToggle.innerHTML = '<i class="fas fa-moon"></i>';
+                $('body').addClass('dark-mode');
+                $themeToggle.html('<i class="fas fa-moon"></i>');
             } else {
-                document.body.classList.remove('dark-mode');
-                if (themeToggle) themeToggle.innerHTML = '<i class="fas fa-sun"></i>';
+                $('body').removeClass('dark-mode');
+                $themeToggle.html('<i class="fas fa-sun"></i>');
             }
         }
 
         showNotification(message, type = 'info') {
-            const container = document.getElementById('notificationContainer');
-            if (!container) return;
+            const $container = $('#notificationContainer');
+            if (!$container.length) return;
             
-            const notification = document.createElement('div');
-            notification.className = `notification ${type}`;
-            notification.innerHTML = `
-                <div class="notification-icon">
-                    <i class="fas fa-${type === 'success' ? 'check' : type === 'error' ? 'exclamation' : 'info'}"></i>
+            const $notification = $(`
+                <div class="notification ${type}">
+                    <div class="notification-icon">
+                        <i class="fas fa-${type === 'success' ? 'check' : type === 'error' ? 'exclamation' : 'info'}"></i>
+                    </div>
+                    <div>${message}</div>
                 </div>
-                <div>${message}</div>
-            `;
+            `);
             
-            container.appendChild(notification);
+            $container.append($notification);
             
             setTimeout(() => {
-                notification.classList.add('show');
+                $notification.addClass('show');
             }, 100);
 
             setTimeout(() => {
-                notification.classList.remove('show');
+                $notification.removeClass('show');
                 setTimeout(() => {
-                    notification.remove();
+                    $notification.remove();
                 }, 300);
             }, 3000);
         }
@@ -2368,27 +2345,32 @@ $('.messages-container').animate({
         }
 
         setupEmojiPicker() {
-            const emojiPicker = document.getElementById('emojiPicker');
-            if (emojiPicker) {
-                emojiPicker.innerHTML = this.emojiList.map(emoji => `
-                    <div class="emoji-item" onclick="chat.insertEmoji('${emoji}')">${emoji}</div>
+            const $emojiPicker = $('#emojiPicker');
+            if ($emojiPicker.length) {
+                const emojiHtml = this.emojiList.map(emoji => `
+                    <div class="emoji-item">${emoji}</div>
                 `).join('');
+                $emojiPicker.html(emojiHtml);
+                
+                $emojiPicker.on('click', '.emoji-item', (e) => {
+                    const emoji = $(e.target).text();
+                    this.insertEmoji(emoji);
+                });
             }
         }
 
         showEmojiPicker() {
-            document.getElementById('emojiModal').style.display = 'flex';
+            $('#emojiModal').css('display', 'flex');
         }
 
         hideEmojiPicker() {
-            document.getElementById('emojiModal').style.display = 'none';
+            $('#emojiModal').hide();
         }
 
         insertEmoji(emoji) {
-            const input = document.getElementById('messageInput');
-            if (input) {
-                input.value += emoji;
-                input.focus();
+            const $input = $('#messageInput');
+            if ($input.length) {
+                $input.val($input.val() + emoji).focus();
                 this.hideEmojiPicker();
             }
         }
@@ -2402,86 +2384,84 @@ $('.messages-container').animate({
         }
 
         checkAutoScroll() {
-            const messagesScroll = document.getElementById('messagesScroll');
-            if (!messagesScroll) return;
+            const $messagesScroll = $('#messagesScroll');
+            if (!$messagesScroll.length) return;
             
-            const scrollTop = messagesScroll.scrollTop;
-            const scrollHeight = messagesScroll.scrollHeight;
-            const clientHeight = messagesScroll.clientHeight;
+            const scrollTop = $messagesScroll.scrollTop();
+            const scrollHeight = $messagesScroll[0].scrollHeight;
+            const clientHeight = $messagesScroll[0].clientHeight;
             const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
             
-            // Update auto-scroll preference - user is controlling scroll if they scroll up significantly
             this.autoScrollEnabled = distanceFromBottom <= 200;
-            
-            console.log('Auto-scroll enabled:', this.autoScrollEnabled, 'Distance from bottom:', distanceFromBottom);
         }
 
-        handleScroll() {
-            const messagesScroll = document.getElementById('messagesScroll');
-            if (!messagesScroll) return;
-            
-            const scrollTop = messagesScroll.scrollTop;
-            const scrollHeight = messagesScroll.scrollHeight;
-            const clientHeight = messagesScroll.clientHeight;
+ handleScroll() {
+    const $messagesScroll = $('#messagesScroll');
+    if (!$messagesScroll.length) return;
+    
+    const scrollTop = $messagesScroll.scrollTop();
 
-            // Load more messages when scrolled to top (within 50px) and there are more to load
-            if (scrollTop <= 50 && this.hasMoreMessages && !this.isLoadingMessages) {
-                console.log('Loading more messages - reached top');
-                this.loadMoreMessages();
-            }
-            
-            // Update auto-scroll preference
-            this.checkAutoScroll();
-        }
+    // FIXED: Check if we're near the top to load more messages
+    if (scrollTop <= 100 && this.hasMoreMessages && !this.isLoadingMessages) {
+        console.log('Loading more messages - reached top');
+        this.loadMoreMessages();
+    }
+    
+    this.checkAutoScroll();
+}
 
-        loadMoreMessages() {
-            if (this.isLoadingMessages || !this.hasMoreMessages) return;
-            
-            this.isLoadingMessages = true;
-            this.messageOffset += this.MESSAGES_PER_LOAD;
-            
-            const messagesScroll = document.getElementById('messagesScroll');
-            if (!messagesScroll) return;
-            
-            // Save current scroll position
-            this.scrollPositionBeforeLoad = messagesScroll.scrollHeight;
-            
-            // Add loading indicator at the top
-            const loadingIndicator = document.createElement('div');
-            loadingIndicator.className = 'loading';
-            loadingIndicator.innerHTML = '<div class="spinner"></div>';
-            loadingIndicator.style.marginBottom = '10px';
-            messagesScroll.insertBefore(loadingIndicator, messagesScroll.firstChild);
-            
-            console.log('Loading more messages, offset:', this.messageOffset);
-            
-            if (this.currentChat === 'broadcast') {
-                this.socket.emit('get broadcast history', { 
-                    offset: this.messageOffset, 
-                    limit: this.MESSAGES_PER_LOAD 
-                });
-            } else {
-                this.socket.emit('get history', { 
-                    withUser: this.currentChat,
-                    offset: this.messageOffset,
-                    limit: this.MESSAGES_PER_LOAD
-                });
-            }
-        }
-
+loadMoreMessages() {
+    if (this.isLoadingMessages || !this.hasMoreMessages) return;
+    
+    this.isLoadingMessages = true;
+    
+    const $messagesScroll = $('#messagesScroll');
+    if (!$messagesScroll.length) return;
+    
+    // Store current scroll position and height BEFORE loading
+    this.scrollPositionBeforeLoad = $messagesScroll[0].scrollHeight;
+    const currentScrollTop = $messagesScroll.scrollTop();
+    
+    console.log('Loading more messages, current offset:', this.messageOffset, 'Scroll top:', currentScrollTop);
+    
+    const $loadingIndicator = $(`
+        <div class="loading" style="margin-bottom: 10px;">
+            <div class="spinner"></div>
+            <span>Loading previous messages...</span>
+        </div>
+    `);
+    $messagesScroll.prepend($loadingIndicator);
+    
+    // Emit the request for more messages
+    if (this.currentChat === 'broadcast') {
+        this.socket.emit('get broadcast history', { 
+            offset: this.messageOffset, 
+            limit: this.MESSAGES_PER_LOAD 
+        });
+    } else {
+        this.socket.emit('get history', { 
+            withUser: this.currentChat,
+            offset: this.messageOffset,
+            limit: this.MESSAGES_PER_LOAD
+        });
+    }
+    
+    // Increment offset for next load
+    this.messageOffset += this.MESSAGES_PER_LOAD;
+}
         renderUsers(users) {
-            const usersList = document.getElementById('usersList');
-            if (!usersList) return;
+            const $usersList = $('#usersList');
+            if (!$usersList.length) return;
             
             console.log('Rendering users:', users);
             
             if (!users || users.length === 0) {
-                usersList.innerHTML = `
+                $usersList.html(`
                     <div style="text-align: center; padding: 40px 20px; color: var(--text-muted);">
                         <i class="fas fa-users" style="font-size: 3rem; margin-bottom: 16px; opacity: 0.5;"></i>
                         <p>No users found</p>
                     </div>
-                `;
+                `);
                 return;
             }
 
@@ -2494,17 +2474,18 @@ $('.messages-container').animate({
                 });
 
             if (filteredUsers.length === 0) {
-                usersList.innerHTML = `
+                $usersList.html(`
                     <div style="text-align: center; padding: 40px 20px; color: var(--text-muted);">
                         <i class="fas fa-user-plus" style="font-size: 3rem; margin-bottom: 16px; opacity: 0.5;"></i>
                         <p>No other users registered</p>
                         <small>Tell others to register to start chatting!</small>
                     </div>
-                `;
+                `);
                 return;
             }
 
-            usersList.innerHTML = filteredUsers.map(user => this.createUserElement(user)).join('');
+            const usersHtml = filteredUsers.map(user => this.createUserElement(user)).join('');
+            $usersList.html(usersHtml);
         }
 
         createUserElement(user) {
@@ -2545,28 +2526,28 @@ $('.messages-container').animate({
     };
 
     EMRIGHS.prototype.previewImage = function(src) {
-        document.getElementById('modalImage').src = src;
-        document.getElementById('imageModal').style.display = 'flex';
+        $('#modalImage').attr('src', src);
+        $('#imageModal').css('display', 'flex');
     };
 
     // Initialize the chat application
     const chat = new EMRIGHS();
 
     // Close modals when clicking outside
-    window.addEventListener('click', (e) => {
-        if (e.target.id === 'emojiModal') {
+    $(document).on('click', (e) => {
+        if ($(e.target).is('#emojiModal')) {
             chat.hideEmojiPicker();
         }
-        if (e.target.id === 'imageModal') {
-            document.getElementById('imageModal').style.display = 'none';
+        if ($(e.target).is('#imageModal')) {
+            $('#imageModal').hide();
         }
-        if (e.target.id === 'uploadPreview') {
+        if ($(e.target).is('#uploadPreview')) {
             chat.hideUploadPreview();
         }
     });
 
     // Make chat available globally
     window.chat = chat;
-</script>
+    </script>
 </body>
 </html>

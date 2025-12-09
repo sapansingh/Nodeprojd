@@ -1248,28 +1248,6 @@
     transform: translateY(-2px) !important;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2) !important;
 }
-/* Add to your CSS */
-.group-item {
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.group-item:hover {
-    background: var(--bg-secondary);
-    transform: translateX(4px);
-}
-
-.group-item.active {
-    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-}
-
-.group-item.active .chat-name {
-    color: white !important;
-}
-
-.group-item.active .chat-last-message {
-    color: rgba(255, 255, 255, 0.8) !important;
-}
     </style>
 </head>
 <body>
@@ -1554,10 +1532,23 @@
 
     <script src="/socket.io/socket.io.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
-<script>
-    // Remove emergency fix since we'll fix it properly
-    // class EMRIGHS {
-    
+
+  <script>
+    // Emergency fix - run this in browser console
+$('#createGroupBtn').css({
+    'display': 'flex !important',
+    'opacity': '1 !important',
+    'visibility': 'visible !important',
+    'position': 'relative',
+    'z-index': '100'
+});
+
+// Test the modal directly
+$('#createGroupBtn').click(function() {
+    $('#createGroupModal').css('display', 'flex');
+});
+
+
     class EMRIGHS {
         constructor() {
             this.socket = null;
@@ -1601,13 +1592,6 @@
             this.setupPasteHandler();
             this.setupGroupEventListeners();
             this.setupContextMenuListeners();
-            
-            // Initialize group loading after socket connection
-            setTimeout(() => {
-                if (this.socket && this.socket.connected) {
-                    this.loadUserGroups();
-                }
-            }, 1000);
         }
 
         // FIXED SCROLLING FUNCTIONS
@@ -1854,10 +1838,7 @@
                 this.autoResizeTextarea();
                 
                 // Check if current chat is a group
-                const group = this.groups.find(g => g.group_id === this.currentChat);
-                const isGroup = !!group;
-                
-                const timestamp = new Date().toISOString();
+                const isGroup = this.groups.some(g => g.group_id === this.currentChat);
                 
                 if (isGroup) {
                     // Group message
@@ -1865,7 +1846,7 @@
                         groupId: this.currentChat,
                         sender: this.currentUser,
                         message: message,
-                        timestamp: timestamp,
+                        timestamp: new Date().toISOString(),
                         isOptimistic: true
                     };
                     
@@ -1878,21 +1859,12 @@
                         }, 50);
                     }
                     
-                    // Send to server
                     this.socket.emit('group message', {
                         groupId: this.currentChat,
                         message: message
                     }, (response) => {
                         if (response && response.error) {
                             this.showNotification(response.error, 'error');
-                            // Remove optimistic message if error
-                            $messagesScroll.find('[data-message-id="' + optimisticMessage.timestamp + '"]').remove();
-                        } else if (response && response.message) {
-                            // Replace optimistic message with real one
-                            const $optimistic = $messagesScroll.find('[data-message-id="' + optimisticMessage.timestamp + '"]');
-                            if ($optimistic.length) {
-                                $optimistic.replaceWith(this.createGroupMessageElement(response.message));
-                            }
                         }
                     });
                     
@@ -1901,7 +1873,7 @@
                     const optimisticMessage = {
                         sender: this.currentUser,
                         message: message,
-                        timestamp: timestamp,
+                        timestamp: new Date().toISOString(),
                         isOptimistic: true
                     };
                     
@@ -1909,6 +1881,8 @@
                     const $messagesScroll = $('#messagesScroll');
                     if ($messagesScroll.length) {
                         $messagesScroll.append(messageElement);
+                        
+                        // FIXED: Always scroll when user sends message
                         setTimeout(() => {
                             this.forceScrollToBottom();
                         }, 50);
@@ -1926,7 +1900,7 @@
                 }
                 
             } catch (error) {
-                this.showNotification('Failed to send message: ' + error.message, 'error');
+                this.showNotification('Failed to send message', 'error');
             }
         }
 
@@ -1956,6 +1930,7 @@
             }
         }
 
+        // REST OF YOUR METHODS REMAIN THE SAME
         setupPasteHandler() {
             $(document).on('paste', (e) => {
                 if (!this.currentChat) {
@@ -2153,7 +2128,7 @@
             return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
         }
 
-        async uploadFile(file) {
+        uploadFile(file) {
             return new Promise((resolve, reject) => {
                 if (!this.socket || !this.currentChat) {
                     reject(new Error('Not connected or no chat selected'));
@@ -2162,7 +2137,9 @@
 
                 // Check if current chat is a group
                 const isGroup = this.groups.some(g => g.group_id === this.currentChat);
-                
+                const recipient = isGroup ? 'GROUP_' + this.currentChat : 
+                                 (this.currentChat === 'broadcast' ? 'ALL' : this.currentChat);
+
                 const reader = new FileReader();
                 
                 reader.onload = (e) => {
@@ -2173,47 +2150,17 @@
                         const fileData = {
                             filename: file.name,
                             file: Array.from(uint8Array),
+                            recipient: recipient,
                             sender: this.currentUser,
                             fileType: file.type,
                             fileSize: file.size
                         };
 
-                        // Add groupId if sending to group
-                        if (isGroup) {
-                            fileData.groupId = this.currentChat;
-                            console.log('Sending file to group:', this.currentChat);
-                        } else {
-                            // For private/broadcast
-                            fileData.recipient = this.currentChat === 'broadcast' ? 'ALL' : this.currentChat;
-                            console.log('Sending file to:', fileData.recipient);
-                        }
+                        console.log('Sending file:', file.name, 'Size:', file.size, 'Type:', file.type);
                         
-                        // Create optimistic file message
-                        const optimisticFileMessage = {
-                            sender: this.currentUser,
-                            filename: file.name,
-                            fileSize: file.size,
-                            timestamp: new Date().toISOString(),
-                            isOptimistic: true,
-                            groupId: isGroup ? this.currentChat : null
-                        };
-                        
-                        const messageElement = isGroup ? 
-                            this.createGroupMessageElement(optimisticFileMessage) : 
-                            this.createMessageElement(optimisticFileMessage);
-                            
-                        const $messagesScroll = $('#messagesScroll');
-                        if ($messagesScroll.length) {
-                            $messagesScroll.append(messageElement);
-                            setTimeout(() => this.forceScrollToBottom(), 50);
-                        }
-                        
-                        // Send file
                         this.socket.emit('file', fileData, (response) => {
                             if (response && response.error) {
                                 reject(new Error(response.error));
-                                // Remove optimistic message
-                                $messagesScroll.find('[data-message-id="' + optimisticFileMessage.timestamp + '"]').remove();
                             } else {
                                 resolve(response);
                             }
@@ -2240,7 +2187,6 @@
             
             const isSender = msg.sender === this.currentUser;
             const isFileMessage = msg.filename || msg.filepath;
-            const isForwarded = msg.is_forwarded || msg.original_sender;
             
             if (isFileMessage) {
                 const time = this.formatTimestamp(msg.timestamp);
@@ -2254,15 +2200,15 @@
                          data-message-id="${msg.id || Date.now()}"
                          data-sender="${msg.sender || 'Unknown'}"
                          data-timestamp="${msg.timestamp || new Date().toISOString()}"
-                         data-type="${isForwarded ? 'forwarded' : 'normal'}">
+                         data-type="${msg.is_forwarded ? 'forwarded' : 'normal'}">
                         <div class="message-header">
                             <span class="message-sender">${msg.sender || 'Unknown'}</span>
                             <span class="message-time">${time}</span>
                         </div>
-                        ${isForwarded ? `
+                        ${msg.is_forwarded ? `
                             <div class="message-forwarded">
                                 <i class="fas fa-share"></i>
-                                Forwarded from ${msg.original_sender || msg.sender}
+                                Forwarded from ${msg.original_sender || 'Unknown'}
                             </div>
                         ` : ''}
                         <div class="file-message">
@@ -2302,15 +2248,15 @@
                          data-message-id="${msg.id || Date.now()}"
                          data-sender="${msg.sender || 'Unknown'}"
                          data-timestamp="${msg.timestamp || new Date().toISOString()}"
-                         data-type="${isForwarded ? 'forwarded' : 'normal'}">
+                         data-type="${msg.is_forwarded ? 'forwarded' : 'normal'}">
                         <div class="message-header">
                             <span class="message-sender">${msg.sender || 'Unknown'}</span>
                             <span class="message-time">${time}</span>
                         </div>
-                        ${isForwarded ? `
+                        ${msg.is_forwarded ? `
                             <div class="message-forwarded">
                                 <i class="fas fa-share"></i>
-                                Forwarded from ${msg.original_sender || msg.sender}
+                                Forwarded from ${msg.original_sender || 'Unknown'}
                             </div>
                         ` : ''}
                         <div class="message-content">${this.escapeHtml(msg.message)}</div>
@@ -2329,7 +2275,6 @@
             
             const isSender = msg.sender === this.currentUser;
             const isFileMessage = msg.filename || msg.filepath;
-            const isForwarded = msg.is_forwarded || msg.original_sender;
             
             if (isFileMessage) {
                 const time = this.formatTimestamp(msg.timestamp);
@@ -2343,16 +2288,15 @@
                          data-message-id="${msg.id || Date.now()}"
                          data-sender="${msg.sender || 'Unknown'}"
                          data-timestamp="${msg.timestamp || new Date().toISOString()}"
-                         data-type="${isForwarded ? 'forwarded' : 'normal'}"
-                         data-group-id="${msg.groupId || ''}">
+                         data-type="${msg.is_forwarded ? 'forwarded' : 'normal'}">
                         <div class="message-header">
                             <span class="message-sender">${msg.sender || 'Unknown'}</span>
                             <span class="message-time">${time}</span>
                         </div>
-                        ${isForwarded ? `
+                        ${msg.is_forwarded ? `
                             <div class="message-forwarded">
                                 <i class="fas fa-share"></i>
-                                Forwarded from ${msg.original_sender || msg.sender}
+                                Forwarded from ${msg.original_sender || 'Unknown'}
                             </div>
                         ` : ''}
                         <div class="file-message">
@@ -2392,16 +2336,15 @@
                          data-message-id="${msg.id || Date.now()}"
                          data-sender="${msg.sender || 'Unknown'}"
                          data-timestamp="${msg.timestamp || new Date().toISOString()}"
-                         data-type="${isForwarded ? 'forwarded' : 'normal'}"
-                         data-group-id="${msg.groupId || ''}">
+                         data-type="${msg.is_forwarded ? 'forwarded' : 'normal'}">
                         <div class="message-header">
                             <span class="message-sender">${msg.sender || 'Unknown'}</span>
                             <span class="message-time">${time}</span>
                         </div>
-                        ${isForwarded ? `
+                        ${msg.is_forwarded ? `
                             <div class="message-forwarded">
                                 <i class="fas fa-share"></i>
-                                Forwarded from ${msg.original_sender || msg.sender}
+                                Forwarded from ${msg.original_sender || 'Unknown'}
                             </div>
                         ` : ''}
                         <div class="message-content">${this.escapeHtml(msg.message)}</div>
@@ -2501,12 +2444,6 @@
                 console.log('Processed users:', users);
                 this.users = users;
                 this.renderUsers(users);
-                
-                // Also load groups if available
-                if (data.groups && Array.isArray(data.groups)) {
-                    this.groups = data.groups;
-                    this.renderGroups();
-                }
             });
 
             this.socket.on('update user list', (users) => {
@@ -2574,7 +2511,6 @@
 
             // Group-related socket listeners
             this.socket.on('group created', (data) => {
-                console.log('Group created event received:', data);
                 this.showNotification(`Added to group: ${data.groupName}`, 'info');
                 this.loadUserGroups();
             });
@@ -2584,21 +2520,13 @@
                 this.handleIncomingMessage(msg);
             });
 
-            this.socket.on('group file', (msg) => {
-                console.log('Received group file message:', msg);
-                this.handleIncomingMessage(msg);
-            });
-
             this.socket.on('group members updated', (data) => {
-                console.log('Group members updated:', data);
                 if (this.currentChat === data.groupId) {
                     this.showNotification(`${data.addedBy} added ${data.addedMembers.length} new member(s) to the group`, 'info');
                 }
-                this.loadUserGroups();
             });
 
             this.socket.on('group deleted', (data) => {
-                console.log('Group deleted:', data);
                 if (this.currentChat === data.groupId) {
                     this.showNotification('This group has been deleted', 'warning');
                     this.selectChat('broadcast');
@@ -2607,17 +2535,8 @@
             });
 
             this.socket.on('group history', (data) => {
-                console.log('Received group history:', data);
                 if (data && data.messages) {
                     this.renderMessages(data.messages, false);
-                }
-            });
-
-            // Forward message confirmation
-            this.socket.on('message forwarded', (data) => {
-                console.log('Message forwarded confirmation:', data);
-                if (data.success) {
-                    this.showNotification(`Message forwarded to ${data.count} recipient(s)`, 'success');
                 }
             });
         }
@@ -2682,61 +2601,60 @@
         }
 
         // GROUP-RELATED METHODS
-        setupGroupEventListeners() {
-            // Create group button - FIXED
-            $('#createGroupBtn').off('click').on('click', () => {
-                console.log('Create group button clicked');
-                this.showCreateGroupModal();
-            });
-            
-            // Close group modal
-            $(document).on('click', '#closeGroupModal, #cancelGroupBtn', (e) => {
-                e.preventDefault();
-                $('#createGroupModal').hide();
-            });
-            
-            // Save group
-            $('#saveGroupBtn').off('click').on('click', () => {
-                this.createGroup();
-            });
-            
-            // Group item click
-            $('#groupsList').on('click', '.group-item', (e) => {
-                const groupId = $(e.currentTarget).data('group-id');
-                if (groupId) {
-                    this.selectGroup(groupId);
-                    $('#sidebar').removeClass('active');
-                }
-            });
-            
-            // Remove member tag
-            $('#selectedMembers').on('click', '.remove-member', (e) => {
-                const username = $(e.target).data('user');
-                $(`.user-select-checkbox[value="${username}"]`).prop('checked', false);
-                $(e.target).parent().remove();
-            });
-            
-            // Forward message modal
-            $(document).on('click', '#closeForwardModal, #cancelForwardBtn', () => {
-                $('#forwardModal').hide();
-                this.forwardingMessage = null;
-            });
-            
-            // Forward tab switching
-            $('.btn-tab').on('click', (e) => {
-                const type = $(e.target).data('type');
-                this.updateForwardRecipients(type);
-            });
-            
-            // Send forward
-            $('#sendForwardBtn').on('click', () => this.forwardMessage());
-            
-            // Group info modal
-            $(document).on('click', '#closeGroupInfoModal', () => {
-                $('#groupInfoModal').hide();
-            });
+  setupGroupEventListeners() {
+    // Create group button - FIXED
+    $('#createGroupBtn').off('click').on('click', () => {
+        console.log('Create group button clicked');
+        this.showCreateGroupModal();
+    });
+    
+    // Close group modal
+    $(document).on('click', '#closeGroupModal, #cancelGroupBtn', (e) => {
+        e.preventDefault();
+        $('#createGroupModal').hide();
+    });
+    
+    // Save group
+    $('#saveGroupBtn').off('click').on('click', () => {
+        this.createGroup();
+    });
+    
+    // Group item click
+    $('#groupsList').on('click', '.group-item', (e) => {
+        const groupId = $(e.currentTarget).data('group-id');
+        if (groupId) {
+            this.selectGroup(groupId);
+            $('#sidebar').removeClass('active');
         }
-
+    });
+    
+    // Remove member tag
+    $('#selectedMembers').on('click', '.remove-member', (e) => {
+        const username = $(e.target).data('user');
+        $(`.user-select-checkbox[value="${username}"]`).prop('checked', false);
+        $(e.target).parent().remove();
+    });
+    
+    // Forward message modal
+    $(document).on('click', '#closeForwardModal, #cancelForwardBtn', () => {
+        $('#forwardModal').hide();
+        this.forwardingMessage = null;
+    });
+    
+    // Forward tab switching
+    $('.btn-tab').on('click', (e) => {
+        const type = $(e.target).data('type');
+        this.updateForwardRecipients(type);
+    });
+    
+    // Send forward
+    $('#sendForwardBtn').on('click', () => this.forwardMessage());
+    
+    // Group info modal
+    $(document).on('click', '#closeGroupInfoModal', () => {
+        $('#groupInfoModal').hide();
+    });
+}
         setupContextMenuListeners() {
             // Message right-click for context menu
             $(document).on('contextmenu', '.message:not(.message-system)', (e) => {
@@ -2759,13 +2677,9 @@
 
         filterUsers(query) {
             const $userItems = $('.chat-item[data-username]');
-            const $groupItems = $('.group-item');
             const searchTerm = query.toLowerCase().trim();
             
             let hasVisibleUsers = false;
-            let hasVisibleGroups = false;
-            
-            // Filter users
             $userItems.each(function() {
                 const username = $(this).data('username').toLowerCase();
                 if (username.includes(searchTerm)) {
@@ -2775,24 +2689,21 @@
                     $(this).hide();
                 }
             });
-            
-            // Filter groups
-            $groupItems.each(function() {
-                const groupName = $(this).find('.chat-name').text().toLowerCase();
-                if (groupName.includes(searchTerm)) {
-                    $(this).show();
-                    hasVisibleGroups = true;
-                } else {
-                    $(this).hide();
-                }
-            });
 
-            // Show/hide section headers based on visibility
-            if (searchTerm) {
-                $('.section-header:contains("My Groups")').toggle(hasVisibleGroups || searchTerm === '');
-                $('.section-header:contains("Active Conversations")').toggle(hasVisibleUsers || searchTerm === '');
+            const $usersList = $('#usersList');
+            let $noUsersMessage = $usersList.find('.no-users-message');
+            
+            if (!hasVisibleUsers && searchTerm) {
+                if ($noUsersMessage.length === 0) {
+                    $noUsersMessage = $(`
+                        <div class="no-users-message" style="text-align: center; padding: 20px; color: var(--text-muted); font-style: italic;">
+                            No users found
+                        </div>
+                    `);
+                    $usersList.append($noUsersMessage);
+                }
             } else {
-                $('.section-header').show();
+                $noUsersMessage.remove();
             }
         }
 
@@ -2860,8 +2771,6 @@
                 }, (response) => {
                     if (response && response.messages) {
                         this.renderMessages(response.messages, false);
-                    } else {
-                        $messagesScroll.html('<div style="text-align: center; padding: 40px; color: var(--text-muted);">No messages in this group yet</div>');
                     }
                 });
             } else if (chatId === 'broadcast') {
@@ -3220,193 +3129,247 @@
         }
 
         // GROUP METHODS
-        loadUserGroups() {
-            if (!this.socket) {
-                console.error('Socket not available');
-                return;
-            }
+    loadUserGroups() {
+    if (!this.socket) {
+        console.error('Socket not available');
+        return;
+    }
+    
+    console.log('Loading user groups...');
+    
+    this.socket.emit('get my groups', (response) => {
+        console.log('Received groups response:', response);
+        
+        if (response && response.groups) {
+            console.log('Groups loaded:', response.groups.length);
+            this.groups = response.groups;
+            this.renderGroups();
+        } else if (response && response.error) {
+            console.error('Error loading groups:', response.error);
+            this.showNotification('Failed to load groups: ' + response.error, 'error');
             
-            console.log('Loading user groups...');
-            
-            this.socket.emit('get my groups', (response) => {
-                console.log('Received groups response:', response);
-                
-                if (response && response.groups) {
-                    console.log('Groups loaded:', response.groups.length);
-                    this.groups = response.groups;
-                    this.renderGroups();
-                } else if (response && response.error) {
-                    console.error('Error loading groups:', response.error);
-                    this.showNotification('Failed to load groups: ' + response.error, 'error');
-                    
-                    // Show error state
-                    const $groupsList = $('#groupsList');
-                    $groupsList.html(`
-                        <div style="text-align: center; padding: 20px; color: var(--danger);">
-                            <i class="fas fa-exclamation-triangle"></i>
-                            <div style="margin-top: 8px;">Failed to load groups</div>
-                        </div>
-                    `);
-                } else {
-                    console.log('No groups found or empty response');
-                    this.groups = [];
-                    this.renderGroups();
-                }
-            });
-        }
-
-        renderGroups() {
+            // Show error state
             const $groupsList = $('#groupsList');
-            if (!$groupsList.length) {
-                console.error('Groups list element not found');
-                return;
-            }
-            
-            console.log('Rendering groups:', this.groups);
-            
-            // Clear loading state
-            $groupsList.find('.loading').remove();
-            
-            if (!this.groups || this.groups.length === 0) {
-                $groupsList.html(`
-                    <div style="text-align: center; padding: 40px 20px; color: var(--text-muted);">
-                        <i class="fas fa-users" style="font-size: 2rem; margin-bottom: 12px; opacity: 0.5;"></i>
-                        <div style="font-size: 0.9rem; margin-bottom: 8px;">No groups yet</div>
-                        <div style="font-size: 0.8rem; opacity: 0.7;">Create your first group!</div>
-                    </div>
-                `);
-                return;
-            }
-            
-            // Create group items
-            const groupsHtml = this.groups.map(group => {
-                console.log('Processing group:', group);
-                return `
-                    <li class="chat-item group-item" data-group-id="${group.group_id}">
-                        <div class="chat-avatar">
-                            <div class="avatar" style="background: linear-gradient(135deg, #a78bfa, #8b5cf6);">
-                                <i class="fas fa-users"></i>
-                            </div>
-                        </div>
-                        <div class="chat-info">
-                            <div class="chat-header">
-                                <span class="chat-name" style="color: var(--text-primary);">${group.group_name || 'Unnamed Group'}</span>
-                            </div>
-                            <div class="chat-last-message" style="color: var(--text-muted); font-size: 0.8rem;">
-                                ${group.memberCount || '0'} members • Created by ${group.created_by || 'Unknown'}
-                            </div>
-                        </div>
-                    </li>
-                `;
-            }).join('');
-            
-            $groupsList.html(groupsHtml);
-            console.log('Groups rendered successfully');
-        }
-
-        showCreateGroupModal() {
-            console.log('showCreateGroupModal called');
-            
-            if (!this.currentUser) {
-                this.showNotification('Please login first', 'error');
-                return;
-            }
-            
-            const $modal = $('#createGroupModal');
-            const $availableUsers = $('#availableUsers');
-            
-            // Clear previous content
-            $availableUsers.html('<div class="loading"><div class="spinner"></div><span>Loading users...</span></div>');
-            $('#selectedMembers').empty();
-            $('#groupNameInput').val('');
-            
-            // Show modal first
-            $modal.css('display', 'flex');
-            console.log('Modal displayed');
-            
-            // Then load users
-            this.populateAvailableUsers();
-        }
-
-        populateAvailableUsers() {
-            const $availableUsers = $('#availableUsers');
-            
-            if (!this.users || this.users.length === 0) {
-                $availableUsers.html(`
-                    <div style="text-align: center; padding: 20px; color: var(--text-muted);">
-                        <i class="fas fa-users" style="font-size: 2rem; margin-bottom: 8px; opacity: 0.5;"></i>
-                        <div>No users available</div>
-                        <small style="font-size: 0.8rem;">Tell others to join the chat!</small>
-                    </div>
-                `);
-                return;
-            }
-            
-            // Filter out current user and sort by online status
-            const filteredUsers = this.users
-                .filter(user => user.username !== this.currentUser)
-                .sort((a, b) => {
-                    if (a.is_online && !b.is_online) return -1;
-                    if (!a.is_online && b.is_online) return 1;
-                    return a.username.localeCompare(b.username);
-                });
-            
-            if (filteredUsers.length === 0) {
-                $availableUsers.html(`
-                    <div style="text-align: center; padding: 20px; color: var(--text-muted);">
-                        <i class="fas fa-user-plus" style="font-size: 2rem; margin-bottom: 8px; opacity: 0.5;"></i>
-                        <div>No other users available</div>
-                        <small style="font-size: 0.8rem;">Wait for others to join!</small>
-                    </div>
-                `);
-                return;
-            }
-            
-            const availableUsersHtml = filteredUsers.map(user => `
-                <div class="user-checkbox" style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: var(--radius-md); transition: var(--transition); cursor: pointer;">
-                    <input type="checkbox" 
-                           id="user_${user.username}" 
-                           value="${user.username}"
-                           class="user-select-checkbox"
-                           style="cursor: pointer;">
-                    <label for="user_${user.username}" style="cursor: pointer; flex: 1; display: flex; align-items: center; gap: 8px;">
-                        <div style="width: 32px; height: 32px; border-radius: 50%; background: ${this.getAvatarColor(user.username)}; display: flex; align-items: center; justify-content: center; color: white; font-size: 0.9rem;">
-                            ${user.username.charAt(0).toUpperCase()}
-                        </div>
-                        <div style="flex: 1;">
-                            <div style="font-weight: 500;">${user.username}</div>
-                            <div style="font-size: 0.8rem; color: ${user.is_online ? 'var(--accent)' : 'var(--text-muted)'}">
-                                ${user.is_online ? '● Online' : '○ Offline'}
-                            </div>
-                        </div>
-                    </label>
+            $groupsList.html(`
+                <div style="text-align: center; padding: 20px; color: var(--danger);">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <div style="margin-top: 8px;">Failed to load groups</div>
                 </div>
-            `).join('');
-            
-            $availableUsers.html(availableUsersHtml);
-            
-            // Add click handler for checkboxes
-            $('.user-select-checkbox').on('change', (e) => {
-                const checkbox = $(e.target);
-                const username = checkbox.val();
-                const isChecked = checkbox.is(':checked');
-                
-                if (isChecked) {
-                    // Add to selected members
-                    const tag = $(`
-                        <span class="member-tag">
-                            ${username}
-                            <span class="remove-member" data-user="${username}">&times;</span>
-                        </span>
-                    `);
-                    $('#selectedMembers').append(tag);
-                } else {
-                    // Remove from selected members
-                    $(`.remove-member[data-user="${username}"]`).parent().remove();
-                }
-            });
+            `);
+        } else {
+            console.log('No groups found or empty response');
+            this.groups = [];
+            this.renderGroups();
         }
+    });
+}
+     renderGroups() {
+    const $groupsList = $('#groupsList');
+    if (!$groupsList.length) {
+        console.error('Groups list element not found');
+        return;
+    }
+    
+    console.log('Rendering groups:', this.groups);
+    
+    // Clear loading state
+    $groupsList.find('.loading').remove();
+    
+    if (!this.groups || this.groups.length === 0) {
+        $groupsList.html(`
+            <div style="text-align: center; padding: 40px 20px; color: var(--text-muted);">
+                <i class="fas fa-users" style="font-size: 2rem; margin-bottom: 12px; opacity: 0.5;"></i>
+                <div style="font-size: 0.9rem; margin-bottom: 8px;">No groups yet</div>
+                <div style="font-size: 0.8rem; opacity: 0.7;">Create your first group!</div>
+            </div>
+        `);
+        return;
+    }
+    
+    // Create group items
+    const groupsHtml = this.groups.map(group => {
+        console.log('Processing group:', group);
+        return `
+            <li class="chat-item group-item" data-group-id="${group.group_id}">
+                <div class="chat-avatar">
+                    <div class="avatar" style="background: linear-gradient(135deg, #a78bfa, #8b5cf6);">
+                        <i class="fas fa-users"></i>
+                    </div>
+                </div>
+                <div class="chat-info">
+                    <div class="chat-header">
+                        <span class="chat-name" style="color: var(--text-primary);">${group.group_name || 'Unnamed Group'}</span>
+                    </div>
+                    <div class="chat-last-message" style="color: var(--text-muted); font-size: 0.8rem;">
+                        ${group.memberCount || '0'} members • Created by ${group.created_by || 'Unknown'}
+                    </div>
+                </div>
+            </li>
+        `;
+    }).join('');
+    
+    $groupsList.html(groupsHtml);
+    console.log('Groups rendered successfully');
+}
+        createGroupElement(group) {
+            return `
+                <li class="chat-item group-item" data-group-id="${group.group_id}" data-type="group">
+                    <div class="chat-avatar">
+                        <div class="avatar" style="background: linear-gradient(135deg, #a78bfa, #8b5cf6);">
+                            <i class="fas fa-users"></i>
+                        </div>
+                    </div>
+                    <div class="chat-info">
+                        <div class="chat-header">
+                            <span class="chat-name">${group.group_name}</span>
+                            <span style="font-size: 0.7rem; color: var(--text-muted);">
+                                ${group.memberCount || 0} members
+                            </span>
+                        </div>
+                        <div class="chat-last-message">
+                            Created by ${group.created_by}
+                        </div>
+                    </div>
+                </li>
+            `;
+        }
+showCreateGroupModal() {
+    console.log('showCreateGroupModal called');
+    
+    if (!this.currentUser) {
+        this.showNotification('Please login first', 'error');
+        return;
+    }
+    
+    const $modal = $('#createGroupModal');
+    const $availableUsers = $('#availableUsers');
+    
+    // Clear previous content
+    $availableUsers.html('<div class="loading"><div class="spinner"></div><span>Loading users...</span></div>');
+    $('#selectedMembers').empty();
+    $('#groupNameInput').val('');
+    
+    // Show modal first
+    $modal.css('display', 'flex');
+    console.log('Modal displayed');
+    
+    // Then load users
+    this.populateAvailableUsers();
+}
 
+// Enhanced populateAvailableUsers method
+populateAvailableUsers() {
+    const $availableUsers = $('#availableUsers');
+    
+    if (!this.users || this.users.length === 0) {
+        $availableUsers.html(`
+            <div style="text-align: center; padding: 20px; color: var(--text-muted);">
+                <i class="fas fa-users" style="font-size: 2rem; margin-bottom: 8px; opacity: 0.5;"></i>
+                <div>No users available</div>
+                <small style="font-size: 0.8rem;">Tell others to join the chat!</small>
+            </div>
+        `);
+        return;
+    }
+    
+    // Filter out current user and sort by online status
+    const filteredUsers = this.users
+        .filter(user => user.username !== this.currentUser)
+        .sort((a, b) => {
+            if (a.is_online && !b.is_online) return -1;
+            if (!a.is_online && b.is_online) return 1;
+            return a.username.localeCompare(b.username);
+        });
+    
+    if (filteredUsers.length === 0) {
+        $availableUsers.html(`
+            <div style="text-align: center; padding: 20px; color: var(--text-muted);">
+                <i class="fas fa-user-plus" style="font-size: 2rem; margin-bottom: 8px; opacity: 0.5;"></i>
+                <div>No other users available</div>
+                <small style="font-size: 0.8rem;">Wait for others to join!</small>
+            </div>
+        `);
+        return;
+    }
+    
+    const availableUsersHtml = filteredUsers.map(user => `
+        <div class="user-checkbox" style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: var(--radius-md); transition: var(--transition); cursor: pointer;">
+            <input type="checkbox" 
+                   id="user_${user.username}" 
+                   value="${user.username}"
+                   class="user-select-checkbox"
+                   style="cursor: pointer;">
+            <label for="user_${user.username}" style="cursor: pointer; flex: 1; display: flex; align-items: center; gap: 8px;">
+                <div style="width: 32px; height: 32px; border-radius: 50%; background: ${this.getAvatarColor(user.username)}; display: flex; align-items: center; justify-content: center; color: white; font-size: 0.9rem;">
+                    ${user.username.charAt(0).toUpperCase()}
+                </div>
+                <div style="flex: 1;">
+                    <div style="font-weight: 500;">${user.username}</div>
+                    <div style="font-size: 0.8rem; color: ${user.is_online ? 'var(--accent)' : 'var(--text-muted)'}">
+                        ${user.is_online ? '● Online' : '○ Offline'}
+                    </div>
+                </div>
+            </label>
+        </div>
+    `).join('');
+    
+    $availableUsers.html(availableUsersHtml);
+    
+    // Add click handler for checkboxes
+    $('.user-select-checkbox').on('change', (e) => {
+        const checkbox = $(e.target);
+        const username = checkbox.val();
+        const isChecked = checkbox.is(':checked');
+        
+        if (isChecked) {
+            // Add to selected members
+            const tag = $(`
+                <span class="member-tag">
+                    ${username}
+                    <span class="remove-member" data-user="${username}">&times;</span>
+                </span>
+            `);
+            $('#selectedMembers').append(tag);
+        } else {
+            // Remove from selected members
+            $(`.remove-member[data-user="${username}"]`).parent().remove();
+        }
+    });
+}
+// Helper method to populate users
+populateAvailableUsers() {
+    const $availableUsers = $('#availableUsers');
+    
+    if (!this.users || this.users.length === 0) {
+        $availableUsers.html('<div style="text-align: center; padding: 20px; color: var(--text-muted);">No users available</div>');
+        return;
+    }
+    
+    const availableUsersHtml = this.users
+        .filter(user => user.username !== this.currentUser)
+        .map(user => `
+            <div class="user-checkbox" style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: var(--radius-md); transition: var(--transition); cursor: pointer;">
+                <input type="checkbox" 
+                       id="user_${user.username}" 
+                       value="${user.username}"
+                       class="user-select-checkbox"
+                       style="cursor: pointer;">
+                <label for="user_${user.username}" style="cursor: pointer; flex: 1; display: flex; align-items: center; gap: 8px;">
+                    <div style="width: 32px; height: 32px; border-radius: 50%; background: ${this.getAvatarColor(user.username)}; display: flex; align-items: center; justify-content: center; color: white; font-size: 0.9rem;">
+                        ${user.username.charAt(0).toUpperCase()}
+                    </div>
+                    <div style="flex: 1;">
+                        <div style="font-weight: 500;">${user.username}</div>
+                        <div style="font-size: 0.8rem; color: ${user.is_online ? 'var(--accent)' : 'var(--text-muted)'}">
+                            ${user.is_online ? 'Online' : 'Offline'}
+                        </div>
+                    </div>
+                </label>
+            </div>
+        `).join('');
+    
+    $availableUsers.html(availableUsersHtml || '<div style="text-align: center; padding: 20px; color: var(--text-muted);">No other users available</div>');
+}
         createGroup() {
             const groupName = $('#groupNameInput').val().trim();
             if (!groupName) {
@@ -3438,50 +3401,20 @@
             });
         }
 
-        showForwardModal(messageData) {
-            if (!messageData) {
-                this.showNotification('No message selected', 'error');
-                return;
-            }
-            
-            this.forwardingMessage = messageData;
+        showForwardModal(message) {
+            this.forwardingMessage = message;
             const $modal = $('#forwardModal');
             const $preview = $('#forwardMessagePreview');
             
-            // Check if it's a file message
-            const isFileMessage = messageData.filename || messageData.filepath;
-            
-            // Create preview based on message type
-            let previewHtml = `
+            // Show message preview
+            const previewHtml = `
                 <div style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 4px;">
-                    From: ${messageData.sender || messageData.original_sender || 'Unknown'}
+                    From: ${message.sender}
                 </div>
                 <div style="background: var(--bg-primary); padding: 12px; border-radius: var(--radius-md); border: 1px solid var(--border-light);">
+                    ${message.message ? this.escapeHtml(message.message) : 'File: ' + (message.filename || 'Unknown')}
+                </div>
             `;
-            
-            if (isFileMessage) {
-                // File message preview
-                previewHtml += `
-                    <div style="display: flex; align-items: center; gap: 12px;">
-                        <div style="font-size: 2rem; opacity: 0.8;">
-                            ${this.getFileIcon({name: messageData.filename || 'file'})}
-                        </div>
-                        <div style="flex: 1;">
-                            <div style="font-weight: 500; margin-bottom: 4px;">${messageData.filename || 'File'}</div>
-                            <div style="font-size: 0.8rem; color: var(--text-muted);">
-                                ${messageData.fileSize || 'File'} • ${messageData.fileType || 'Unknown type'}
-                            </div>
-                        </div>
-                    </div>
-                `;
-            } else if (messageData.message) {
-                // Text message preview
-                previewHtml += this.escapeHtml(messageData.message);
-            } else {
-                previewHtml += 'Message';
-            }
-            
-            previewHtml += '</div>';
             $preview.html(previewHtml);
             
             // Populate recipients
@@ -3498,57 +3431,34 @@
                 recipientsHtml = this.users
                     .filter(user => user.username !== this.currentUser)
                     .map(user => `
-                        <div class="user-checkbox" style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: var(--radius-md); cursor: pointer; transition: var(--transition);">
+                        <div class="user-checkbox">
                             <input type="checkbox" 
                                    id="forward_user_${user.username}" 
                                    value="${user.username}"
                                    data-type="user"
-                                   class="forward-select-checkbox"
-                                   style="cursor: pointer;">
-                            <label for="forward_user_${user.username}" style="cursor: pointer; flex: 1; display: flex; align-items: center; gap: 8px;">
-                                <div style="width: 28px; height: 28px; border-radius: 50%; background: ${this.getAvatarColor(user.username)}; display: flex; align-items: center; justify-content: center; color: white; font-size: 0.8rem;">
-                                    ${user.username.charAt(0).toUpperCase()}
-                                </div>
-                                <div style="flex: 1;">
-                                    <div style="font-weight: 500;">${user.username}</div>
-                                    <div style="font-size: 0.8rem; color: ${user.is_online ? 'var(--accent)' : 'var(--text-muted)'}">
-                                        ${user.is_online ? '● Online' : '○ Offline'}
-                                    </div>
-                                </div>
+                                   class="forward-select-checkbox">
+                            <label for="forward_user_${user.username}" style="cursor: pointer;">
+                                ${user.username}
+                                ${user.is_online ? '<span style="color: var(--accent); font-size: 0.8rem;">●</span>' : ''}
                             </label>
                         </div>
                     `).join('');
-                    
-                if (recipientsHtml === '') {
-                    recipientsHtml = '<div style="text-align: center; padding: 20px; color: var(--text-muted);">No users available</div>';
-                }
             } else {
-                // Groups tab
                 recipientsHtml = this.groups.map(group => `
-                    <div class="user-checkbox" style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: var(--radius-md); cursor: pointer; transition: var(--transition);">
+                    <div class="user-checkbox">
                         <input type="checkbox" 
                                id="forward_group_${group.group_id}" 
                                value="${group.group_id}"
                                data-type="group"
-                               class="forward-select-checkbox"
-                               style="cursor: pointer;">
-                        <label for="forward_group_${group.group_id}" style="cursor: pointer; flex: 1; display: flex; align-items: center; gap: 8px;">
-                            <div style="width: 28px; height: 28px; border-radius: 50%; background: linear-gradient(135deg, #a78bfa, #8b5cf6); display: flex; align-items: center; justify-content: center; color: white; font-size: 0.9rem;">
-                                <i class="fas fa-users"></i>
-                            </div>
-                            <div style="flex: 1;">
-                                <div style="font-weight: 500;">${group.group_name}</div>
-                                <div style="font-size: 0.8rem; color: var(--text-muted);">
-                                    ${group.memberCount || '0'} members
-                                </div>
-                            </div>
+                               class="forward-select-checkbox">
+                        <label for="forward_group_${group.group_id}" style="cursor: pointer;">
+                            <i class="fas fa-users"></i> ${group.group_name}
+                            <span style="font-size: 0.8rem; color: var(--text-muted);">
+                                (${group.memberCount || 0} members)
+                            </span>
                         </label>
                     </div>
                 `).join('');
-                
-                if (recipientsHtml === '') {
-                    recipientsHtml = '<div style="text-align: center; padding: 20px; color: var(--text-muted);">No groups available</div>';
-                }
             }
             
             $recipientsList.html(recipientsHtml);
@@ -3559,12 +3469,11 @@
         }
 
         forwardMessage() {
-            if (!this.forwardingMessage) {
-                this.showNotification('No message selected to forward', 'error');
-                return;
-            }
+            if (!this.forwardingMessage) return;
             
             const selectedRecipients = [];
+            const recipientType = $('.btn-tab.active').data('type');
+            
             $(`.forward-select-checkbox:checked`).each(function() {
                 selectedRecipients.push({
                     id: $(this).val(),
@@ -3577,33 +3486,17 @@
                 return;
             }
             
-            // Prepare forward data
-            const forwardData = {
-                originalMessage: {
-                    sender: this.forwardingMessage.sender || this.currentUser,
-                    message: this.forwardingMessage.message,
-                    filename: this.forwardingMessage.filename,
-                    filepath: this.forwardingMessage.filepath,
-                    fileSize: this.forwardingMessage.fileSize,
-                    is_forwarded: true,
-                    original_sender: this.forwardingMessage.original_sender || this.forwardingMessage.sender,
-                    original_timestamp: this.forwardingMessage.timestamp
-                },
-                recipients: selectedRecipients.map(r => ({
-                    id: r.id,
-                    type: r.type
-                }))
-            };
-            
-            console.log('Forwarding message:', forwardData);
-            
-            this.socket.emit('forward message', forwardData, (response) => {
+            this.socket.emit('forward message', {
+                originalMessage: this.forwardingMessage,
+                recipients: selectedRecipients.map(r => r.id),
+                recipientType: recipientType
+            }, (response) => {
                 if (response && response.success) {
-                    this.showNotification(`Message forwarded to ${selectedRecipients.length} recipient(s)`, 'success');
+                    this.showNotification('Message forwarded', 'success');
                     $('#forwardModal').hide();
                     this.forwardingMessage = null;
                 } else {
-                    this.showNotification(response?.error || 'Failed to forward message', 'error');
+                    this.showNotification(response.error || 'Failed to forward message', 'error');
                 }
             });
         }
@@ -3651,37 +3544,23 @@
             const messageId = $message.data('message-id');
             const sender = $message.data('sender');
             
-            // Get the actual message content
-            const messageContent = $message.find('.message-content').text();
-            const filename = $message.find('.file-name').text();
-            
-            // Store message data for context actions
-            const messageData = {
-                id: messageId,
-                sender: sender,
-                element: $message,
-                message: messageContent,
-                filename: filename,
-                filepath: $message.find('img').attr('src') || $message.find('a[download]').attr('href'),
-                fileSize: $message.find('.file-size').text(),
-                timestamp: $message.data('timestamp')
-            };
-            
-            // Only show forward option for non-system messages
-            const isSystem = $message.hasClass('message-system');
-            const $forwardOption = $('#messageContextMenu .context-menu-item[data-action="forward"]');
-            $forwardOption.toggle(!isSystem);
-            
+            // Position menu at click location
             $('#messageContextMenu')
                 .css({
                     left: e.pageX,
                     top: e.pageY,
                     display: 'block'
                 })
-                .data('message', messageData);
+                .data('message-element', $message);
             
-            e.preventDefault();
-            return false;
+            // Store message data for context actions
+            const messageData = {
+                id: messageId,
+                sender: sender,
+                element: $message
+            };
+            
+            $('#messageContextMenu').data('message', messageData);
         }
 
         handleMessageAction(action) {
@@ -3714,19 +3593,15 @@
                 id: $message.data('message-id'),
                 sender: $message.data('sender'),
                 message: $message.find('.message-content').text(),
-                timestamp: $message.data('timestamp'),
-                filename: $message.find('.file-name').text(),
-                filepath: $message.find('img').attr('src') || $message.find('a[download]').attr('href')
+                timestamp: $message.data('timestamp')
             };
         }
 
         copyMessageText($message) {
             const text = $message.find('.message-content').text();
-            if (text) {
-                navigator.clipboard.writeText(text).then(() => {
-                    this.showNotification('Message copied to clipboard', 'success');
-                });
-            }
+            navigator.clipboard.writeText(text).then(() => {
+                this.showNotification('Message copied to clipboard', 'success');
+            });
         }
 
         replyToMessage(messageData) {
@@ -3784,19 +3659,6 @@
 
     // Make chat available globally
     window.chat = chat;
-
-    // Add direct click handler for create group button (fallback)
-    $(document).ready(function() {
-        $('#createGroupBtn').css({
-            'display': 'flex',
-            'opacity': '1',
-            'visibility': 'visible',
-            'position': 'relative',
-            'z-index': '100'
-        }).off('click').on('click', function() {
-            chat.showCreateGroupModal();
-        });
-    });
 </script>
 </body>
 </html>

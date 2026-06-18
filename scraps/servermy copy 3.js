@@ -9,7 +9,7 @@ const fs = require('fs');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 
-const io = new Server(server, { maxHttpBufferSize: 1e8 }); // 100MB max file size
+const io = new Server(server, { maxHttpBufferSize: 1e8 });
 app.use(express.json());
 
 // JWT secret key
@@ -47,8 +47,6 @@ db.query(`
         message TEXT,
         filename VARCHAR(255),
         filepath TEXT,
-        filetype VARCHAR(100),
-        filesize BIGINT,
         timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
 `);
@@ -82,8 +80,6 @@ db.query(`
         message TEXT,
         filename VARCHAR(255),
         filepath TEXT,
-        filetype VARCHAR(100),
-        filesize BIGINT,
         timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         is_forwarded BOOLEAN DEFAULT FALSE,
         original_sender VARCHAR(255),
@@ -95,14 +91,21 @@ db.query(`
 // ------------------ HELPER FUNCTIONS ------------------
 
 function validateFileUpload(data) {
-    const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB limit
+    const MAX_FILE_SIZE = 100 * 1024 * 1024; // 10MB
+    const ALLOWED_TYPES = [
+        'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+        'application/pdf', 'application/msword', 
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'text/plain', 'application/zip'
+    ];
     
     if (data.fileSize > MAX_FILE_SIZE) {
-        return { valid: false, error: 'File size exceeds 100MB limit' };
+        return { valid: false, error: 'File size exceeds 10MB limit' };
     }
     
-    // ALLOW ALL FILE TYPES
-    // No restrictions on file types
+    if (data.fileType && !ALLOWED_TYPES.includes(data.fileType)) {
+        return { valid: false, error: 'File type not allowed' };
+    }
     
     return { valid: true };
 }
@@ -353,8 +356,6 @@ io.on('connection', (socket) => {
                         message: storedMessage.message,
                         filename: storedMessage.filename,
                         filepath: storedMessage.filepath,
-                        filetype: storedMessage.filetype,
-                        filesize: storedMessage.filesize,
                         timestamp: storedMessage.timestamp
                     };
 
@@ -402,8 +403,6 @@ io.on('connection', (socket) => {
                         message: storedMessage.message,
                         filename: storedMessage.filename,
                         filepath: storedMessage.filepath,
-                        filetype: storedMessage.filetype,
-                        filesize: storedMessage.filesize,
                         timestamp: storedMessage.timestamp
                     };
                     
@@ -413,12 +412,12 @@ io.on('connection', (socket) => {
             });
     });
 
-    // File sharing - ENHANCED VERSION WITH SUPPORT FOR ALL FILE TYPES
+    // File sharing - ENHANCED VERSION WITH GROUP SUPPORT
     socket.on('file', (data, callback) => {
-        console.log('File upload received:', data.filename, 'Type:', data.fileType, 'Size:', data.fileSize, 'GroupId:', data.groupId);
+        console.log('File upload received:', data.filename, 'Size:', data.fileSize, 'GroupId:', data.groupId);
         
         try {
-            // Validate file (only size validation, no type restrictions)
+            // Validate file
             const validation = validateFileUpload(data);
             if (!validation.valid) {
                 if (callback) callback({ error: validation.error });
@@ -426,7 +425,7 @@ io.on('connection', (socket) => {
             }
 
             const fileBuffer = Buffer.from(data.file);
-            const uniqueName = Date.now() + '-' + data.filename.replace(/[^a-zA-Z0-9._-]/g, '_');
+            const uniqueName = Date.now() + '-' + data.filename;
             const filePath = path.join(UPLOAD_DIR, uniqueName);
 
             fs.writeFileSync(filePath, fileBuffer);
@@ -436,8 +435,8 @@ io.on('connection', (socket) => {
             // Check if it's a group file
             if (data.groupId) {
                 // Store in group_messages table
-                db.query(`INSERT INTO group_messages (group_id, sender, filename, filepath, filetype, filesize) VALUES (?, ?, ?, ?, ?, ?)`,
-                    [data.groupId, data.sender, data.filename, fileLink, data.fileType, data.fileSize],
+                db.query(`INSERT INTO group_messages (group_id, sender, filename, filepath) VALUES (?, ?, ?, ?)`,
+                    [data.groupId, data.sender, data.filename, fileLink],
                     (err, result) => {
                         if (err) {
                             console.error('Error storing group file message:', err);
@@ -462,8 +461,8 @@ io.on('connection', (socket) => {
                                 sender: storedMessage.sender,
                                 filename: storedMessage.filename,
                                 filepath: storedMessage.filepath,
-                                filetype: storedMessage.filetype,
-                                filesize: storedMessage.filesize,
+                                fileSize: data.fileSize,
+                                fileType: data.fileType,
                                 timestamp: storedMessage.timestamp
                             };
                             
@@ -498,8 +497,8 @@ io.on('connection', (socket) => {
                 // Store in regular messages table (private or broadcast)
                 const recipient = data.recipient || 'ALL';
                 
-                db.query(`INSERT INTO messages (sender, recipient, filename, filepath, filetype, filesize) VALUES (?, ?, ?, ?, ?, ?)`,
-                    [data.sender, recipient, data.filename, fileLink, data.fileType, data.fileSize],
+                db.query(`INSERT INTO messages (sender, recipient, filename, filepath) VALUES (?, ?, ?, ?)`,
+                    [data.sender, recipient, data.filename, fileLink],
                     (err, result) => {
                         if (err) {
                             console.error('Error storing file message:', err);
@@ -524,8 +523,8 @@ io.on('connection', (socket) => {
                                 recipient: storedMessage.recipient,
                                 filename: storedMessage.filename,
                                 filepath: storedMessage.filepath,
-                                filetype: storedMessage.filetype,
-                                filesize: storedMessage.filesize,
+                                fileSize: data.fileSize,
+                                fileType: data.fileType,
                                 timestamp: storedMessage.timestamp
                             };
 
@@ -777,350 +776,343 @@ io.on('connection', (socket) => {
         });
     });
 
-    // Forward Message - ENHANCED VERSION FOR ALL MESSAGE TYPES
-    socket.on('forward message', (data, callback) => {
-        const { originalMessage, recipients } = data;
+    // Forward Message - FIXED VERSION FOR FILES
+ // Forward Message - ENHANCED VERSION FOR ALL MESSAGE TYPES
+socket.on('forward message', (data, callback) => {
+    const { originalMessage, recipients } = data;
+    
+    console.log('Forward message request:', originalMessage, 'Recipients:', recipients);
+    
+    if (!originalMessage || !recipients || recipients.length === 0) {
+        if (callback) callback({ error: 'Invalid forward request' });
+        return;
+    }
+    
+    // Determine message type
+    const isFileMessage = originalMessage.filename || originalMessage.filepath;
+    const isGroupMessage = originalMessage.isGroupMessage || false;
+    const originalGroupId = originalMessage.groupId;
+    
+    console.log('Message type - File:', isFileMessage, 'Group:', isGroupMessage, 'GroupId:', originalGroupId);
+    
+    const forwardedMessages = [];
+    let processedCount = 0;
+    
+    recipients.forEach(recipient => {
+        console.log('Forwarding to recipient:', recipient);
         
-        console.log('Forward message request:', originalMessage, 'Recipients:', recipients);
-        
-        if (!originalMessage || !recipients || recipients.length === 0) {
-            if (callback) callback({ error: 'Invalid forward request' });
-            return;
-        }
-        
-        // Determine message type
-        const isFileMessage = originalMessage.filename || originalMessage.filepath;
-        const isGroupMessage = originalMessage.isGroupMessage || false;
-        const originalGroupId = originalMessage.groupId;
-        
-        console.log('Message type - File:', isFileMessage, 'Group:', isGroupMessage, 'GroupId:', originalGroupId);
-        
-        const forwardedMessages = [];
-        let processedCount = 0;
-        
-        recipients.forEach(recipient => {
-            console.log('Forwarding to recipient:', recipient);
+        if (recipient.type === 'group') {
+            // Forward to group
+            const groupId = recipient.id;
             
-            if (recipient.type === 'group') {
-                // Forward to group
-                const groupId = recipient.id;
-                
-                // Check if user is a member of this group
-                db.query(`SELECT * FROM group_members WHERE group_id = ? AND username = ?`,
-                    [groupId, socket.username],
-                    (err, results) => {
-                        if (err || results.length === 0) {
-                            console.error('User not a member of group:', groupId);
-                            processedCount++;
-                            checkCompletion();
-                            return;
-                        }
-                        
-                        if (isFileMessage) {
-                            // Forward file message to group
-                            db.query(`INSERT INTO group_messages (group_id, sender, filename, filepath, filetype, filesize, is_forwarded, original_sender, original_timestamp) 
-                                     VALUES (?, ?, ?, ?, ?, ?, TRUE, ?, ?)`,
-                                [groupId, socket.username, 
-                                 originalMessage.filename,
-                                 originalMessage.filepath,
-                                 originalMessage.filetype,
-                                 originalMessage.filesize,
-                                 originalMessage.original_sender || originalMessage.sender,
-                                 originalMessage.original_timestamp],
-                                (err, result) => {
-                                    if (err) {
-                                        console.error('Error storing forwarded group file message:', err);
-                                        processedCount++;
-                                        checkCompletion();
-                                        return;
-                                    }
-                                    
-                                    // Get stored message
-                                    db.query(`SELECT * FROM group_messages WHERE id = ?`,
-                                        [result.insertId],
-                                        (err, results) => {
-                                            if (err || results.length === 0) {
-                                                processedCount++;
-                                                checkCompletion();
-                                                return;
-                                            }
-                                            
-                                            const storedMessage = results[0];
-                                            const messageObj = {
-                                                id: storedMessage.id,
-                                                groupId: storedMessage.group_id,
-                                                sender: storedMessage.sender,
-                                                filename: storedMessage.filename,
-                                                filepath: storedMessage.filepath,
-                                                filetype: storedMessage.filetype,
-                                                filesize: storedMessage.filesize,
-                                                is_forwarded: storedMessage.is_forwarded,
-                                                original_sender: storedMessage.original_sender,
-                                                original_timestamp: storedMessage.original_timestamp,
-                                                timestamp: storedMessage.timestamp
-                                            };
-                                            
-                                            // Get all group members
-                                            db.query(`SELECT username FROM group_members WHERE group_id = ?`,
-                                                [groupId],
-                                                (err, members) => {
-                                                    if (err) {
-                                                        processedCount++;
-                                                        checkCompletion();
-                                                        return;
-                                                    }
-                                                    
-                                                    // Send to all group members
-                                                    members.forEach(member => {
-                                                        const memberSocket = Array.from(io.sockets.sockets.values())
-                                                            .find(s => s.username === member.username);
-                                                        if (memberSocket) {
-                                                            memberSocket.emit('group message', messageObj);
-                                                        }
-                                                    });
-                                                    
-                                                    forwardedMessages.push({
-                                                        type: 'group',
-                                                        id: groupId,
-                                                        success: true
-                                                    });
-                                                    processedCount++;
-                                                    checkCompletion();
-                                                });
-                                        });
-                                });
-                        } else {
-                            // Forward text message to group
-                            db.query(`INSERT INTO group_messages (group_id, sender, message, is_forwarded, original_sender, original_timestamp) 
-                                     VALUES (?, ?, ?, TRUE, ?, ?)`,
-                                [groupId, socket.username, 
-                                 originalMessage.message,
-                                 originalMessage.original_sender || originalMessage.sender,
-                                 originalMessage.original_timestamp],
-                                (err, result) => {
-                                    if (err) {
-                                        console.error('Error storing forwarded group message:', err);
-                                        processedCount++;
-                                        checkCompletion();
-                                        return;
-                                    }
-                                    
-                                    // Get stored message
-                                    db.query(`SELECT * FROM group_messages WHERE id = ?`,
-                                        [result.insertId],
-                                        (err, results) => {
-                                            if (err || results.length === 0) {
-                                                processedCount++;
-                                                checkCompletion();
-                                                return;
-                                            }
-                                            
-                                            const storedMessage = results[0];
-                                            const messageObj = {
-                                                id: storedMessage.id,
-                                                groupId: storedMessage.group_id,
-                                                sender: storedMessage.sender,
-                                                message: storedMessage.message,
-                                                is_forwarded: storedMessage.is_forwarded,
-                                                original_sender: storedMessage.original_sender,
-                                                original_timestamp: storedMessage.original_timestamp,
-                                                timestamp: storedMessage.timestamp
-                                            };
-                                            
-                                            // Get all group members
-                                            db.query(`SELECT username FROM group_members WHERE group_id = ?`,
-                                                [groupId],
-                                                (err, members) => {
-                                                    if (err) {
-                                                        processedCount++;
-                                                        checkCompletion();
-                                                        return;
-                                                    }
-                                                    
-                                                    // Send to all group members
-                                                    members.forEach(member => {
-                                                        const memberSocket = Array.from(io.sockets.sockets.values())
-                                                            .find(s => s.username === member.username);
-                                                        if (memberSocket) {
-                                                            memberSocket.emit('group message', messageObj);
-                                                        }
-                                                    });
-                                                    
-                                                    forwardedMessages.push({
-                                                        type: 'group',
-                                                        id: groupId,
-                                                        success: true
-                                                    });
-                                                    processedCount++;
-                                                    checkCompletion();
-                                                });
-                                        });
-                                });
-                        }
-                    });
-            } else {
-                // Forward to user (private message)
-                const recipientUsername = recipient.id;
-                
-                // Check if recipient exists
-                db.query(`SELECT username FROM users WHERE username = ?`, 
-                    [recipientUsername], 
-                    (err, results) => {
-                        if (err || results.length === 0) {
-                            console.error('Recipient not found:', recipientUsername);
-                            processedCount++;
-                            checkCompletion();
-                            return;
-                        }
-                        
-                        if (isFileMessage) {
-                            // Forward file message to user
-                            db.query(`INSERT INTO messages (sender, recipient, filename, filepath, filetype, filesize) VALUES (?, ?, ?, ?, ?, ?)`,
-                                [socket.username, recipientUsername, 
-                                 originalMessage.filename,
-                                 originalMessage.filepath,
-                                 originalMessage.filetype,
-                                 originalMessage.filesize],
-                                (err, result) => {
-                                    if (err) {
-                                        console.error('Error storing forwarded private file message:', err);
-                                        processedCount++;
-                                        checkCompletion();
-                                        return;
-                                    }
-                                    
-                                    // Get stored message
-                                    db.query(`SELECT * FROM messages WHERE id = ?`,
-                                        [result.insertId],
-                                        (err, results) => {
-                                            if (err || results.length === 0) {
-                                                processedCount++;
-                                                checkCompletion();
-                                                return;
-                                            }
-                                            
-                                            const storedMessage = results[0];
-                                            const messageObj = {
-                                                id: storedMessage.id,
-                                                sender: storedMessage.sender,
-                                                recipient: storedMessage.recipient,
-                                                filename: storedMessage.filename,
-                                                filepath: storedMessage.filepath,
-                                                filetype: storedMessage.filetype,
-                                                filesize: storedMessage.filesize,
-                                                is_forwarded: true,
-                                                original_sender: originalMessage.original_sender || originalMessage.sender,
-                                                original_timestamp: originalMessage.original_timestamp,
-                                                timestamp: storedMessage.timestamp
-                                            };
-                                            
-                                            // Send to recipient if online
-                                            const recipientSocket = Array.from(io.sockets.sockets.values())
-                                                .find(s => s.username === recipientUsername);
-                                            if (recipientSocket) {
-                                                recipientSocket.emit('file', messageObj);
-                                            }
-                                            
-                                            // Also send back to sender
-                                            socket.emit('file', messageObj);
-                                            
-                                            forwardedMessages.push({
-                                                type: 'user',
-                                                username: recipientUsername,
-                                                success: true
-                                            });
-                                            processedCount++;
-                                            checkCompletion();
-                                        });
-                                });
-                        } else {
-                            // Forward text message to user
-                            db.query(`INSERT INTO messages (sender, recipient, message) VALUES (?, ?, ?)`,
-                                [socket.username, recipientUsername, 
-                                 originalMessage.message],
-                                (err, result) => {
-                                    if (err) {
-                                        console.error('Error storing forwarded private message:', err);
-                                        processedCount++;
-                                        checkCompletion();
-                                        return;
-                                    }
-                                    
-                                    // Get stored message
-                                    db.query(`SELECT * FROM messages WHERE id = ?`,
-                                        [result.insertId],
-                                        (err, results) => {
-                                            if (err || results.length === 0) {
-                                                processedCount++;
-                                                checkCompletion();
-                                                return;
-                                            }
-                                            
-                                            const storedMessage = results[0];
-                                            const messageObj = {
-                                                id: storedMessage.id,
-                                                sender: storedMessage.sender,
-                                                recipient: storedMessage.recipient,
-                                                message: storedMessage.message,
-                                                is_forwarded: true,
-                                                original_sender: originalMessage.original_sender || originalMessage.sender,
-                                                original_timestamp: originalMessage.original_timestamp,
-                                                timestamp: storedMessage.timestamp
-                                            };
-                                            
-                                            // Send to recipient if online
-                                            const recipientSocket = Array.from(io.sockets.sockets.values())
-                                                .find(s => s.username === recipientUsername);
-                                            if (recipientSocket) {
-                                                recipientSocket.emit('private message', messageObj);
-                                            }
-                                            
-                                            // Also send back to sender
-                                            socket.emit('private message', messageObj);
-                                            
-                                            forwardedMessages.push({
-                                                type: 'user',
-                                                username: recipientUsername,
-                                                success: true
-                                            });
-                                            processedCount++;
-                                            checkCompletion();
-                                        });
-                                });
-                        }
-                    });
-            }
-        });
-        
-        function checkCompletion() {
-            if (processedCount === recipients.length) {
-                const successCount = forwardedMessages.filter(m => m.success).length;
-                const errorCount = recipients.length - successCount;
-                
-                console.log(`Forward completed: ${successCount} successful, ${errorCount} failed`);
-                
-                if (callback) {
-                    if (successCount > 0) {
-                        callback({ 
-                            success: true, 
-                            message: `Forwarded to ${successCount} recipient(s)`,
-                            details: forwardedMessages 
-                        });
-                    } else {
-                        callback({ error: 'Failed to forward to any recipients' });
+            // Check if user is a member of this group
+            db.query(`SELECT * FROM group_members WHERE group_id = ? AND username = ?`,
+                [groupId, socket.username],
+                (err, results) => {
+                    if (err || results.length === 0) {
+                        console.error('User not a member of group:', groupId);
+                        processedCount++;
+                        checkCompletion();
+                        return;
                     }
-                }
-                
-                // Notify sender
-                if (successCount > 0) {
-                    socket.emit('message forwarded', {
-                        success: true,
-                        count: successCount
-                    });
-                }
-            }
+                    
+                    if (isFileMessage) {
+                        // Forward file message to group
+                        db.query(`INSERT INTO group_messages (group_id, sender, filename, filepath, is_forwarded, original_sender, original_timestamp) 
+                                 VALUES (?, ?, ?, ?, TRUE, ?, ?)`,
+                            [groupId, socket.username, 
+                             originalMessage.filename,
+                             originalMessage.filepath,
+                             originalMessage.original_sender || originalMessage.sender,
+                             originalMessage.original_timestamp],
+                            (err, result) => {
+                                if (err) {
+                                    console.error('Error storing forwarded group file message:', err);
+                                    processedCount++;
+                                    checkCompletion();
+                                    return;
+                                }
+                                
+                                // Get stored message
+                                db.query(`SELECT * FROM group_messages WHERE id = ?`,
+                                    [result.insertId],
+                                    (err, results) => {
+                                        if (err || results.length === 0) {
+                                            processedCount++;
+                                            checkCompletion();
+                                            return;
+                                        }
+                                        
+                                        const storedMessage = results[0];
+                                        const messageObj = {
+                                            id: storedMessage.id,
+                                            groupId: storedMessage.group_id,
+                                            sender: storedMessage.sender,
+                                            filename: storedMessage.filename,
+                                            filepath: storedMessage.filepath,
+                                            is_forwarded: storedMessage.is_forwarded,
+                                            original_sender: storedMessage.original_sender,
+                                            original_timestamp: storedMessage.original_timestamp,
+                                            timestamp: storedMessage.timestamp
+                                        };
+                                        
+                                        // Get all group members
+                                        db.query(`SELECT username FROM group_members WHERE group_id = ?`,
+                                            [groupId],
+                                            (err, members) => {
+                                                if (err) {
+                                                    processedCount++;
+                                                    checkCompletion();
+                                                    return;
+                                                }
+                                                
+                                                // Send to all group members
+                                                members.forEach(member => {
+                                                    const memberSocket = Array.from(io.sockets.sockets.values())
+                                                        .find(s => s.username === member.username);
+                                                    if (memberSocket) {
+                                                        memberSocket.emit('group message', messageObj);
+                                                    }
+                                                });
+                                                
+                                                forwardedMessages.push({
+                                                    type: 'group',
+                                                    id: groupId,
+                                                    success: true
+                                                });
+                                                processedCount++;
+                                                checkCompletion();
+                                            });
+                                    });
+                            });
+                    } else {
+                        // Forward text message to group
+                        db.query(`INSERT INTO group_messages (group_id, sender, message, is_forwarded, original_sender, original_timestamp) 
+                                 VALUES (?, ?, ?, TRUE, ?, ?)`,
+                            [groupId, socket.username, 
+                             originalMessage.message,
+                             originalMessage.original_sender || originalMessage.sender,
+                             originalMessage.original_timestamp],
+                            (err, result) => {
+                                if (err) {
+                                    console.error('Error storing forwarded group message:', err);
+                                    processedCount++;
+                                    checkCompletion();
+                                    return;
+                                }
+                                
+                                // Get stored message
+                                db.query(`SELECT * FROM group_messages WHERE id = ?`,
+                                    [result.insertId],
+                                    (err, results) => {
+                                        if (err || results.length === 0) {
+                                            processedCount++;
+                                            checkCompletion();
+                                            return;
+                                        }
+                                        
+                                        const storedMessage = results[0];
+                                        const messageObj = {
+                                            id: storedMessage.id,
+                                            groupId: storedMessage.group_id,
+                                            sender: storedMessage.sender,
+                                            message: storedMessage.message,
+                                            is_forwarded: storedMessage.is_forwarded,
+                                            original_sender: storedMessage.original_sender,
+                                            original_timestamp: storedMessage.original_timestamp,
+                                            timestamp: storedMessage.timestamp
+                                        };
+                                        
+                                        // Get all group members
+                                        db.query(`SELECT username FROM group_members WHERE group_id = ?`,
+                                            [groupId],
+                                            (err, members) => {
+                                                if (err) {
+                                                    processedCount++;
+                                                    checkCompletion();
+                                                    return;
+                                                }
+                                                
+                                                // Send to all group members
+                                                members.forEach(member => {
+                                                    const memberSocket = Array.from(io.sockets.sockets.values())
+                                                        .find(s => s.username === member.username);
+                                                    if (memberSocket) {
+                                                        memberSocket.emit('group message', messageObj);
+                                                    }
+                                                });
+                                                
+                                                forwardedMessages.push({
+                                                    type: 'group',
+                                                    id: groupId,
+                                                    success: true
+                                                });
+                                                processedCount++;
+                                                checkCompletion();
+                                            });
+                                    });
+                            });
+                    }
+                });
+        } else {
+            // Forward to user (private message)
+            const recipientUsername = recipient.id;
+            
+            // Check if recipient exists
+            db.query(`SELECT username FROM users WHERE username = ?`, 
+                [recipientUsername], 
+                (err, results) => {
+                    if (err || results.length === 0) {
+                        console.error('Recipient not found:', recipientUsername);
+                        processedCount++;
+                        checkCompletion();
+                        return;
+                    }
+                    
+                    if (isFileMessage) {
+                        // Forward file message to user
+                        db.query(`INSERT INTO messages (sender, recipient, filename, filepath) VALUES (?, ?, ?, ?)`,
+                            [socket.username, recipientUsername, 
+                             originalMessage.filename,
+                             originalMessage.filepath],
+                            (err, result) => {
+                                if (err) {
+                                    console.error('Error storing forwarded private file message:', err);
+                                    processedCount++;
+                                    checkCompletion();
+                                    return;
+                                }
+                                
+                                // Get stored message
+                                db.query(`SELECT * FROM messages WHERE id = ?`,
+                                    [result.insertId],
+                                    (err, results) => {
+                                        if (err || results.length === 0) {
+                                            processedCount++;
+                                            checkCompletion();
+                                            return;
+                                        }
+                                        
+                                        const storedMessage = results[0];
+                                        const messageObj = {
+                                            id: storedMessage.id,
+                                            sender: storedMessage.sender,
+                                            recipient: storedMessage.recipient,
+                                            filename: storedMessage.filename,
+                                            filepath: storedMessage.filepath,
+                                            is_forwarded: true,
+                                            original_sender: originalMessage.original_sender || originalMessage.sender,
+                                            original_timestamp: originalMessage.original_timestamp,
+                                            timestamp: storedMessage.timestamp
+                                        };
+                                        
+                                        // Send to recipient if online
+                                        const recipientSocket = Array.from(io.sockets.sockets.values())
+                                            .find(s => s.username === recipientUsername);
+                                        if (recipientSocket) {
+                                            recipientSocket.emit('file', messageObj);
+                                        }
+                                        
+                                        // Also send back to sender
+                                        socket.emit('file', messageObj);
+                                        
+                                        forwardedMessages.push({
+                                            type: 'user',
+                                            username: recipientUsername,
+                                            success: true
+                                        });
+                                        processedCount++;
+                                        checkCompletion();
+                                    });
+                            });
+                    } else {
+                        // Forward text message to user
+                        db.query(`INSERT INTO messages (sender, recipient, message) VALUES (?, ?, ?)`,
+                            [socket.username, recipientUsername, 
+                             originalMessage.message],
+                            (err, result) => {
+                                if (err) {
+                                    console.error('Error storing forwarded private message:', err);
+                                    processedCount++;
+                                    checkCompletion();
+                                    return;
+                                }
+                                
+                                // Get stored message
+                                db.query(`SELECT * FROM messages WHERE id = ?`,
+                                    [result.insertId],
+                                    (err, results) => {
+                                        if (err || results.length === 0) {
+                                            processedCount++;
+                                            checkCompletion();
+                                            return;
+                                        }
+                                        
+                                        const storedMessage = results[0];
+                                        const messageObj = {
+                                            id: storedMessage.id,
+                                            sender: storedMessage.sender,
+                                            recipient: storedMessage.recipient,
+                                            message: storedMessage.message,
+                                            is_forwarded: true,
+                                            original_sender: originalMessage.original_sender || originalMessage.sender,
+                                            original_timestamp: originalMessage.original_timestamp,
+                                            timestamp: storedMessage.timestamp
+                                        };
+                                        
+                                        // Send to recipient if online
+                                        const recipientSocket = Array.from(io.sockets.sockets.values())
+                                            .find(s => s.username === recipientUsername);
+                                        if (recipientSocket) {
+                                            recipientSocket.emit('private message', messageObj);
+                                        }
+                                        
+                                        // Also send back to sender
+                                        socket.emit('private message', messageObj);
+                                        
+                                        forwardedMessages.push({
+                                            type: 'user',
+                                            username: recipientUsername,
+                                            success: true
+                                        });
+                                        processedCount++;
+                                        checkCompletion();
+                                    });
+                            });
+                    }
+                });
         }
     });
+    
+    function checkCompletion() {
+        if (processedCount === recipients.length) {
+            const successCount = forwardedMessages.filter(m => m.success).length;
+            const errorCount = recipients.length - successCount;
+            
+            console.log(`Forward completed: ${successCount} successful, ${errorCount} failed`);
+            
+            if (callback) {
+                if (successCount > 0) {
+                    callback({ 
+                        success: true, 
+                        message: `Forwarded to ${successCount} recipient(s)`,
+                        details: forwardedMessages 
+                    });
+                } else {
+                    callback({ error: 'Failed to forward to any recipients' });
+                }
+            }
+            
+            // Notify sender
+            if (successCount > 0) {
+                socket.emit('message forwarded', {
+                    success: true,
+                    count: successCount
+                });
+            }
+        }
+    }
+});
 
     // Add Members to Group
     socket.on('add group members', (data, callback) => {

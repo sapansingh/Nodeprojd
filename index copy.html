@@ -25,7 +25,7 @@
             --text-primary: #1e293b;
             --text-secondary: #475569;
             --text-muted: #64748b;
-            
+                
             --border-light: #e2e8f0;
             --border-dark: #cbd5e1;
             
@@ -1111,64 +1111,403 @@
             background: var(--primary);
             color: white;
         }
+        /* Add to your existing CSS */
+.btn-tab {
+    padding: 8px 16px;
+    border: 1px solid var(--border-light);
+    background: var(--bg-secondary);
+    border-radius: var(--radius-md);
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.btn-tab.active {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+}
+
+.context-menu-item {
+    padding: 12px 16px;
+    cursor: pointer;
+    transition: var(--transition);
+    color: var(--text-primary);
+    font-size: 0.9rem;
+}
+
+.context-menu-item:hover {
+    background: var(--bg-secondary);
+}
+
+.user-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.user-checkbox:hover {
+    background: var(--bg-secondary);
+}
+
+.member-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: var(--bg-secondary);
+    border-radius: var(--radius-full);
+    font-size: 0.85rem;
+}
+
+.member-tag .remove-member {
+    cursor: pointer;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+.member-tag .remove-member:hover {
+    color: var(--danger);
+}
+
+.message-forwarded {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.message-forwarded i {
+    font-size: 0.7rem;
+}
+
+/* Ensure the create group button is visible */
+#createGroupBtn {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    opacity: 1 !important;
+    visibility: visible !important;
+    position: relative;
+}
+
+/* Add hover effect for create group button */
+#createGroupBtn:hover {
+    background: rgba(255, 255, 255, 0.25) !important;
+    transform: translateY(-2px) !important;
+}
+
+/* Style for group section */
+#groupsList {
+    min-height: 60px;
+}
+
+/* Group item styling */
+.group-item .chat-avatar .avatar {
+    background: linear-gradient(135deg, #a78bfa, #8b5cf6) !important;
+}
+
+.group-item .chat-avatar .avatar i {
+    font-size: 1rem;
+}
+
+.group-item.active .chat-avatar .avatar {
+    background: linear-gradient(135deg, #8b5cf6, #7c3aed) !important;
+    color: white !important;
+}
+
+/* Modal styling for better appearance */
+.modal {
+    z-index: 10000;
+}
+
+.modal-content {
+    max-height: 80vh;
+    overflow-y: auto;
+}
+/* Ensure the create group button is visible */
+#createGroupBtn {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    opacity: 1 !important;
+    visibility: visible !important;
+    position: relative;
+    z-index: 100;
+}
+
+/* Add hover effect for create group button */
+#createGroupBtn:hover {
+    background: rgba(255, 255, 255, 0.25) !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2) !important;
+}
+/* Add to your CSS */
+.group-item {
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.group-item:hover {
+    background: var(--bg-secondary);
+    transform: translateX(4px);
+}
+
+.group-item.active {
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+}
+
+.group-item.active .chat-name {
+    color: white !important;
+}
+
+.group-item.active .chat-last-message {
+    color: rgba(255, 255, 255, 0.8) !important;
+}
     </style>
 </head>
 <body>
     <div class="app-container">
         <!-- Sidebar -->
-        <div class="sidebar" id="sidebar">
-            <div class="sidebar-header">
-                <div class="user-profile">
-                    <div class="avatar" id="userAvatar"></div>
-                    <div class="user-info">
-                        <h3 id="usernameDisplay">Loading...</h3>
-                        <p><span class="status-dot"></span> Online</p>
-                    </div>
-                    <div class="header-actions">
-                        <button class="icon-btn" id="themeToggle" title="Toggle Theme">
-                            <i class="fas fa-sun"></i>
-                        </button>
-                        <button class="icon-btn" id="logoutBtn" title="Logout">
-                            <i class="fas fa-sign-out-alt"></i>
-                        </button>
-                    </div>
-                </div>
+       <!-- Sidebar -->
+<div class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+        <div class="user-profile">
+            <div class="avatar" id="userAvatar"></div>
+            <div class="user-info">
+                <h3 id="usernameDisplay">Loading...</h3>
+                <p><span class="status-dot"></span> Online</p>
             </div>
-
-            <div class="search-container">
-                <div class="search-box">
-                    <i class="fas fa-search search-icon"></i>
-                    <input type="text" id="userSearch" placeholder="Search conversations...">
-                </div>
-            </div>
-
-            <div class="chats-section">
-                <div class="section-header">Broadcast</div>
-                <ul class="chat-list">
-                    <li class="chat-item broadcast-item" data-chat="broadcast">
-                        <div class="chat-avatar">
-                            <div class="avatar" style="background: linear-gradient(135deg, #8b5cf6, #a78bfa);">
-                                <i class="fas fa-bullhorn"></i>
-                            </div>
-                        </div>
-                        <div class="chat-info">
-                            <div class="chat-header">
-                                <span class="chat-name">Broadcast Channel</span>
-                            </div>
-                            <div class="chat-last-message">Send messages to everyone</div>
-                        </div>
-                    </li>
-                </ul>
-
-                <div class="section-header">Active Conversations</div>
-                <ul class="chat-list" id="usersList">
-                    <div class="loading">
-                        <div class="spinner"></div>
-                    </div>
-                </ul>
+            <div class="header-actions">
+                <!-- Create Group Button - MOVED HERE -->
+                <button class="icon-btn" id="createGroupBtn" title="Create Group">
+                    <i class="fas fa-users"></i>
+                </button>
+                <button class="icon-btn" id="themeToggle" title="Toggle Theme">
+                    <i class="fas fa-sun"></i>
+                </button>
+                <button class="icon-btn" id="logoutBtn" title="Logout">
+                    <i class="fas fa-sign-out-alt"></i>
+                </button>
             </div>
         </div>
+    </div>
 
+    <div class="search-container">
+        <div class="search-box">
+            <i class="fas fa-search search-icon"></i>
+            <input type="text" id="userSearch" placeholder="Search conversations...">
+        </div>
+    </div>
+
+    <div class="chats-section">
+        <div class="section-header">Broadcast</div>
+        <ul class="chat-list">
+            <li class="chat-item broadcast-item" data-chat="broadcast">
+                <div class="chat-avatar">
+                    <div class="avatar" style="background: linear-gradient(135deg, #8b5cf6, #a78bfa);">
+                        <i class="fas fa-bullhorn"></i>
+                    </div>
+                </div>
+                <div class="chat-info">
+                    <div class="chat-header">
+                        <span class="chat-name">Broadcast Channel</span>
+                    </div>
+                    <div class="chat-last-message">Send messages to everyone</div>
+                </div>
+            </li>
+        </ul>
+
+        <!-- My Groups Section -->
+        <div class="section-header">My Groups</div>
+        <ul class="chat-list" id="groupsList">
+            <div class="loading">
+                <div class="spinner"></div>
+                <span>Loading groups...</span>
+            </div>
+        </ul>
+
+        <!-- Active Conversations -->
+        <div class="section-header">Active Conversations</div>
+        <ul class="chat-list" id="usersList">
+            <div class="loading">
+                <div class="spinner"></div>
+                <span>Loading users...</span>
+            </div>
+        </ul>
+    </div>
+</div>
+<!-- Create Group Modal -->
+<div class="modal" id="createGroupModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title">Create New Group</h3>
+            <button class="close-btn" id="closeGroupModal">&times;</button>
+        </div>
+        <div style="margin-bottom: 20px;">
+            <input type="text" id="groupNameInput" placeholder="Enter group name..." 
+                   style="width: 100%; padding: 12px; border: 1px solid var(--border-light); border-radius: var(--radius-md); margin-bottom: 16px;">
+            
+            <div style="margin-bottom: 12px; font-weight: 500; color: var(--text-primary);">Select Members:</div>
+            <div id="availableUsers" style="max-height: 200px; overflow-y: auto; margin-bottom: 16px; padding: 8px; background: var(--bg-secondary); border-radius: var(--radius-md);">
+                <!-- Users will be loaded here -->
+            </div>
+            
+            <div style="margin-bottom: 12px; font-weight: 500; color: var(--text-primary);">Selected Members:</div>
+            <div id="selectedMembers" style="min-height: 40px; padding: 8px; background: var(--bg-secondary); border-radius: var(--radius-md); border: 1px dashed var(--border-light);">
+                <!-- Selected members will appear here -->
+            </div>
+        </div>
+        <div style="display: flex; gap: 12px; justify-content: flex-end;">
+            <button class="btn" id="cancelGroupBtn">Cancel</button>
+            <button class="btn btn-primary" id="saveGroupBtn">Create Group</button>
+        </div>
+    </div>
+</div>
+
+<!-- Forward Message Modal -->
+<div class="modal" id="forwardModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title">Forward Message</h3>
+            <button class="close-btn" id="closeForwardModal">&times;</button>
+        </div>
+        <div style="margin-bottom: 20px;">
+            <div style="margin-bottom: 12px; font-weight: 500; color: var(--text-primary);">Message Preview:</div>
+            <div id="forwardMessagePreview" style="margin-bottom: 16px; padding: 12px; background: var(--bg-secondary); border-radius: var(--radius-md);">
+                <!-- Message preview will be shown here -->
+            </div>
+            
+            <div style="display: flex; gap: 8px; margin-bottom: 16px;">
+                <button class="btn-tab active" data-type="users">Users</button>
+                <button class="btn-tab" data-type="groups">Groups</button>
+            </div>
+            
+            <div style="margin-bottom: 12px; font-weight: 500; color: var(--text-primary);">Select Recipients:</div>
+            <div id="forwardRecipients" style="max-height: 200px; overflow-y: auto; padding: 8px; background: var(--bg-secondary); border-radius: var(--radius-md);">
+                <!-- Recipients will be loaded here -->
+            </div>
+        </div>
+        <div style="display: flex; gap: 12px; justify-content: flex-end;">
+            <button class="btn" id="cancelForwardBtn">Cancel</button>
+            <button class="btn btn-primary" id="sendForwardBtn">Forward</button>
+        </div>
+    </div>
+</div>
+
+<!-- Group Info Modal -->
+<!-- Group Info Modal -->
+<div class="modal" id="groupInfoModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title" id="groupInfoName">Group Info</h3>
+            <button class="close-btn" id="closeGroupInfoModal">&times;</button>
+        </div>
+        <div style="margin-bottom: 20px;">
+            <div style="margin-bottom: 16px; color: var(--text-muted);" id="groupInfoCreator">
+                <!-- Creator info will be shown here -->
+            </div>
+            
+            <div style="margin-bottom: 12px; font-weight: 500; color: var(--text-primary);">
+                Members (<span id="memberCount">0</span>):
+            </div>
+            <div id="groupMembersList" style="max-height: 300px; overflow-y: auto; margin-bottom: 16px;">
+                <!-- Members will be listed here -->
+            </div>
+            
+            <div id="groupAdminActions" style="margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border-light); display: none;">
+                <div style="margin-bottom: 16px;">
+                    <button class="btn btn-primary" id="addMembersBtn" style="width: 100%;">
+                        <i class="fas fa-user-plus"></i> Add Members
+                    </button>
+                </div>
+                
+                <div id="addMembersSection" style="display: none;">
+                    <div style="margin-bottom: 12px; font-weight: 500; color: var(--text-primary);">
+                        Select users to add:
+                    </div>
+                    <div id="addMembersList" style="max-height: 200px; overflow-y: auto; padding: 8px; background: var(--bg-secondary); border-radius: var(--radius-md); margin-bottom: 12px;">
+                        <!-- Available users will be listed here -->
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                        <button class="btn" id="cancelAddMembers" style="flex: 1;">Cancel</button>
+                        <button class="btn btn-primary" id="saveAddedMembers" style="flex: 1;">Add Selected</button>
+                    </div>
+                </div>
+                
+                <div style="margin-top: 16px;">
+                    <button class="btn" id="leaveGroupBtn" style="width: 100%; color: var(--warning);">
+                        <i class="fas fa-sign-out-alt"></i> Leave Group
+                    </button>
+                    <button class="btn" id="deleteGroupBtn" style="width: 100%; margin-top: 8px; color: var(--danger);">
+                        <i class="fas fa-trash"></i> Delete Group
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Regular member actions -->
+            <div id="groupMemberActions" style="margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border-light); display: none;">
+                <button class="btn" id="leaveGroupBtnMember" style="width: 100%; color: var(--warning);">
+                    <i class="fas fa-sign-out-alt"></i> Leave Group
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Manage Group Members Modal -->
+<div class="modal" id="manageMembersModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title">Manage Group Members</h3>
+            <button class="close-btn" id="closeManageMembersModal">&times;</button>
+        </div>
+        <div style="margin-bottom: 20px;">
+            <div style="margin-bottom: 12px; font-weight: 500; color: var(--text-primary);">
+                Current Members
+            </div>
+            <div id="currentMembersList" style="max-height: 300px; overflow-y: auto; padding: 8px; background: var(--bg-secondary); border-radius: var(--radius-md);">
+                <!-- Current members with remove buttons will be shown here -->
+            </div>
+            
+            <div style="margin: 20px 0; padding: 16px 0; border-top: 1px solid var(--border-light); border-bottom: 1px solid var(--border-light);">
+                <div style="margin-bottom: 12px; font-weight: 500; color: var(--text-primary);">
+                    Add New Members
+                </div>
+                <div id="availableMembersList" style="max-height: 200px; overflow-y: auto; padding: 8px; background: var(--bg-tertiary); border-radius: var(--radius-md); margin-bottom: 12px;">
+                    <!-- Available users to add -->
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <button class="btn" id="cancelAddNewMembers" style="flex: 1;">Cancel</button>
+                    <button class="btn btn-primary" id="addNewMembers" style="flex: 1;">Add Selected</button>
+                </div>
+            </div>
+        </div>
+        <div style="display: flex; gap: 12px; justify-content: flex-end;">
+            <button class="btn" id="closeManageMembersBtn">Close</button>
+        </div>
+    </div>
+</div>
+<!-- Context Menu for Messages -->
+<div id="messageContextMenu" style="position: absolute; display: none; background: var(--bg-card); border: 1px solid var(--border-light); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); z-index: 10000; min-width: 150px;">
+    <div class="context-menu-item" data-action="reply">
+        <i class="fas fa-reply" style="margin-right: 8px;"></i> Reply
+    </div>
+    <div class="context-menu-item" data-action="forward">
+        <i class="fas fa-share" style="margin-right: 8px;"></i> Forward
+    </div>
+    <div class="context-menu-item" data-action="copy">
+        <i class="fas fa-copy" style="margin-right: 8px;"></i> Copy
+    </div>
+    <div class="context-menu-item" data-action="delete" style="color: var(--danger); border-top: 1px solid var(--border-light);">
+        <i class="fas fa-trash" style="margin-right: 8px;"></i> Delete
+    </div>
+</div>
         <!-- Main Content -->
         <div class="main-content">
             <!-- Welcome Screen (shown by default) -->
@@ -1280,14 +1619,14 @@
 
     <script src="/socket.io/socket.io.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
-
-    <script>
+<script>
     class EMRIGHS {
         constructor() {
             this.socket = null;
             this.currentUser = null;
             this.currentChat = null;
             this.users = [];
+            this.groups = [];
             this.messages = new Map();
             this.typingUsers = new Set();
             this.isDarkMode = localStorage.getItem('darkMode') === 'true';
@@ -1306,6 +1645,12 @@
             this.initialLoad = true;
             this.scrollPositionBeforeLoad = 0;
             
+            // Group management variables
+            this.currentGroupInfo = null;
+            this.selectedGroup = null;
+            this.forwardingMessage = null;
+            this.currentChatType = null; // 'user', 'group', or 'broadcast'
+            
             this.initializeApp();
         }
 
@@ -1317,81 +1662,88 @@
             this.setupEmojiPicker();
             this.setupFileUpload();
             this.setupPasteHandler();
+            this.setupGroupEventListeners();
+            this.setupContextMenuListeners();
+            
+            // Initialize group loading after socket connection
+            setTimeout(() => {
+                if (this.socket && this.socket.connected) {
+                    this.loadUserGroups();
+                }
+            }, 1000);
         }
 
         // FIXED SCROLLING FUNCTIONS
-    // FIXED SCROLLING FUNCTIONS
-forceScrollToBottom() {
-    const $messagesScroll = $('#messagesScroll');
-    if (!$messagesScroll.length) {
-        console.log('Messages scroll element not found');
-        return;
-    }
-
-    console.log('Scrolling to bottom...');
-    
-    const scrollToBottom = () => {
-        const scrollHeight = $messagesScroll[0].scrollHeight;
-        const clientHeight = $messagesScroll[0].clientHeight;
-        const currentScroll = $messagesScroll.scrollTop();
-        
-        console.log('ScrollHeight:', scrollHeight, 'ClientHeight:', clientHeight, 'CurrentScroll:', currentScroll);
-        
-        // CHECK: If content fits perfectly, no scroll needed
-        if (scrollHeight <= clientHeight) {
-            console.log('All content fits in container - no scroll needed');
-            return;
-        }
-        
-        // CHECK: If already at bottom, no scroll needed
-        const distanceFromBottom = scrollHeight - currentScroll - clientHeight;
-        if (distanceFromBottom <= 1) {
-            console.log('Already at bottom - no scroll needed');
-            return;
-        }
-        
-        console.log('Scrolling needed - distance from bottom:', distanceFromBottom);
-        
-        // Method 1: Direct scroll
-        $messagesScroll.scrollTop(scrollHeight);
-        
-        // Method 2: Native element scroll
-        $messagesScroll[0].scrollTop = scrollHeight;
-        
-        // Method 3: Verify scroll worked
-        setTimeout(() => {
-            const newScroll = $messagesScroll.scrollTop();
-            const newDistance = scrollHeight - newScroll - clientHeight;
-            
-            console.log('After scroll - New scroll:', newScroll, 'New distance:', newDistance);
-            
-            if (newDistance > 10) {
-                console.log('Scroll incomplete, retrying...');
-                $messagesScroll.scrollTop(scrollHeight);
-                $messagesScroll[0].scrollTop = scrollHeight;
-            } else {
-                console.log('Scroll successful!');
+        forceScrollToBottom() {
+            const $messagesScroll = $('#messagesScroll');
+            if (!$messagesScroll.length) {
+                console.log('Messages scroll element not found');
+                return;
             }
-        }, 50);
-    };
 
-    // Only attempt scroll if needed
-    scrollToBottom();
-    
-    // Additional attempts only if first attempt determined scrolling is needed
-    setTimeout(() => {
-        const scrollHeight = $messagesScroll[0].scrollHeight;
-        const clientHeight = $messagesScroll[0].clientHeight;
-        const currentScroll = $messagesScroll.scrollTop();
-        const distanceFromBottom = scrollHeight - currentScroll - clientHeight;
-        
-        // Only retry if not at bottom and content exceeds container
-        if (scrollHeight > clientHeight && distanceFromBottom > 10) {
-            console.log('Retry scroll attempt...');
-            $messagesScroll.scrollTop(scrollHeight);
+            console.log('Scrolling to bottom...');
+            
+            const scrollToBottom = () => {
+                const scrollHeight = $messagesScroll[0].scrollHeight;
+                const clientHeight = $messagesScroll[0].clientHeight;
+                const currentScroll = $messagesScroll.scrollTop();
+                
+                // CHECK: If content fits perfectly, no scroll needed
+                if (scrollHeight <= clientHeight) {
+                    console.log('All content fits in container - no scroll needed');
+                    return;
+                }
+                
+                // CHECK: If already at bottom, no scroll needed
+                const distanceFromBottom = scrollHeight - currentScroll - clientHeight;
+                if (distanceFromBottom <= 1) {
+                    console.log('Already at bottom - no scroll needed');
+                    return;
+                }
+                
+                console.log('Scrolling needed - distance from bottom:', distanceFromBottom);
+                
+                // Method 1: Direct scroll
+                $messagesScroll.scrollTop(scrollHeight);
+                
+                // Method 2: Native element scroll
+                $messagesScroll[0].scrollTop = scrollHeight;
+                
+                // Method 3: Verify scroll worked
+                setTimeout(() => {
+                    const newScroll = $messagesScroll.scrollTop();
+                    const newDistance = scrollHeight - newScroll - clientHeight;
+                    
+                    console.log('After scroll - New scroll:', newScroll, 'New distance:', newDistance);
+                    
+                    if (newDistance > 10) {
+                        console.log('Scroll incomplete, retrying...');
+                        $messagesScroll.scrollTop(scrollHeight);
+                        $messagesScroll[0].scrollTop = scrollHeight;
+                    } else {
+                        console.log('Scroll successful!');
+                    }
+                }, 50);
+            };
+
+            // Only attempt scroll if needed
+            scrollToBottom();
+            
+            // Additional attempts only if first attempt determined scrolling is needed
+            setTimeout(() => {
+                const scrollHeight = $messagesScroll[0].scrollHeight;
+                const clientHeight = $messagesScroll[0].clientHeight;
+                const currentScroll = $messagesScroll.scrollTop();
+                const distanceFromBottom = scrollHeight - currentScroll - clientHeight;
+                
+                // Only retry if not at bottom and content exceeds container
+                if (scrollHeight > clientHeight && distanceFromBottom > 10) {
+                    console.log('Retry scroll attempt...');
+                    $messagesScroll.scrollTop(scrollHeight);
+                }
+            }, 100);
         }
-    }, 100);
-}
+
         smoothScrollToBottom() {
             const $messagesScroll = $('#messagesScroll');
             if (!$messagesScroll.length) return;
@@ -1414,81 +1766,82 @@ forceScrollToBottom() {
         }
 
         // ENHANCED MESSAGE HANDLING WITH RELIABLE SCROLLING
-     renderMessages(msgs, isLoadMore = false) {
-    const $messagesScroll = $('#messagesScroll');
-    if (!$messagesScroll.length) return;
-    
-    $messagesScroll.find('.loading').remove();
-    
-    if (!msgs || msgs.length === 0) {
-        if (!isLoadMore) {
-            $messagesScroll.html(`
-                <div style="text-align: center; padding: 40px; color: var(--text-muted);">
-                    <i class="fas fa-comments" style="font-size: 3rem; margin-bottom: 16px; opacity: 0.5;"></i>
-                    <p>No messages yet</p>
-                    <small>Start the conversation!</small>
-                </div>
-            `);
+        renderMessages(msgs, isLoadMore = false) {
+            const $messagesScroll = $('#messagesScroll');
+            if (!$messagesScroll.length) return;
+            
+            $messagesScroll.find('.loading').remove();
+            
+            if (!msgs || msgs.length === 0) {
+                if (!isLoadMore) {
+                    $messagesScroll.html(`
+                        <div style="text-align: center; padding: 40px; color: var(--text-muted);">
+                            <i class="fas fa-comments" style="font-size: 3rem; margin-bottom: 16px; opacity: 0.5;"></i>
+                            <p>No messages yet</p>
+                            <small>Start the conversation!</small>
+                        </div>
+                    `);
+                }
+                this.hasMoreMessages = false;
+                this.isLoadingMessages = false;
+                return;
+            }
+
+            const validMessages = msgs.filter(msg => msg && typeof msg === 'object');
+            console.log('Valid messages to render:', validMessages.length, 'isLoadMore:', isLoadMore);
+
+            // FIXED: Properly check if there are more messages to load
+            if (validMessages.length < this.MESSAGES_PER_LOAD) {
+                this.hasMoreMessages = false;
+                console.log('No more messages to load');
+            }
+
+            if (isLoadMore) {
+                // FIXED: Store current scroll position before adding new messages
+                const currentScrollTop = $messagesScroll.scrollTop();
+                const currentScrollHeight = $messagesScroll[0].scrollHeight;
+                
+                const fragment = document.createDocumentFragment();
+                validMessages.forEach(msg => {
+                    const messageElement = this.createMessageElement(msg);
+                    if (messageElement) {
+                        fragment.appendChild(messageElement);
+                    }
+                });
+                
+                // Prepend new messages
+                $messagesScroll.prepend(fragment);
+                
+                // FIXED: Calculate new scroll position to maintain user's view
+                const newScrollHeight = $messagesScroll[0].scrollHeight;
+                const heightDifference = newScrollHeight - currentScrollHeight;
+                
+                // Set scroll position to maintain the user's reading position
+                $messagesScroll.scrollTop(currentScrollTop + heightDifference);
+                
+                console.log('Loaded more messages. Height difference:', heightDifference);
+                
+            } else {
+                // Initial load - clear and add all messages
+                $messagesScroll.empty();
+                validMessages.forEach(msg => {
+                    const messageElement = this.createMessageElement(msg);
+                    if (messageElement) {
+                        $messagesScroll.append(messageElement);
+                    }
+                });
+                
+                // FIXED: Always scroll to bottom on initial load
+                setTimeout(() => {
+                    this.forceScrollToBottom();
+                }, 100);
+                
+                this.initialLoad = false;
+            }
+            
+            this.isLoadingMessages = false;
         }
-        this.hasMoreMessages = false;
-        this.isLoadingMessages = false;
-        return;
-    }
 
-    const validMessages = msgs.filter(msg => msg && typeof msg === 'object');
-    console.log('Valid messages to render:', validMessages.length, 'isLoadMore:', isLoadMore);
-
-    // FIXED: Properly check if there are more messages to load
-    if (validMessages.length < this.MESSAGES_PER_LOAD) {
-        this.hasMoreMessages = false;
-        console.log('No more messages to load');
-    }
-
-    if (isLoadMore) {
-        // FIXED: Store current scroll position before adding new messages
-        const currentScrollTop = $messagesScroll.scrollTop();
-        const currentScrollHeight = $messagesScroll[0].scrollHeight;
-        
-        const fragment = document.createDocumentFragment();
-        validMessages.forEach(msg => {
-            const messageElement = this.createMessageElement(msg);
-            if (messageElement) {
-                fragment.appendChild(messageElement);
-            }
-        });
-        
-        // Prepend new messages
-        $messagesScroll.prepend(fragment);
-        
-        // FIXED: Calculate new scroll position to maintain user's view
-        const newScrollHeight = $messagesScroll[0].scrollHeight;
-        const heightDifference = newScrollHeight - currentScrollHeight;
-        
-        // Set scroll position to maintain the user's reading position
-        $messagesScroll.scrollTop(currentScrollTop + heightDifference);
-        
-        console.log('Loaded more messages. Height difference:', heightDifference);
-        
-    } else {
-        // Initial load - clear and add all messages
-        $messagesScroll.empty();
-        validMessages.forEach(msg => {
-            const messageElement = this.createMessageElement(msg);
-            if (messageElement) {
-                $messagesScroll.append(messageElement);
-            }
-        });
-        
-        // FIXED: Always scroll to bottom on initial load
-        setTimeout(() => {
-            this.forceScrollToBottom();
-        }, 100);
-        
-        this.initialLoad = false;
-    }
-    
-    this.isLoadingMessages = false;
-}
         handleIncomingMessage(message) {
             console.log('Received message:', message);
             
@@ -1496,6 +1849,35 @@ forceScrollToBottom() {
                 return;
             }
             
+            // Check if this is a group message
+            if (message.groupId) {
+                const shouldDisplay = this.currentChat === message.groupId;
+                
+                if (shouldDisplay) {
+                    const messageElement = this.createGroupMessageElement(message);
+                    const $messagesScroll = $('#messagesScroll');
+                    if ($messagesScroll.length) {
+                        $messagesScroll.append(messageElement);
+                        
+                        const isUserAtBottom = this.isUserNearBottom();
+                        const isFromCurrentUser = message.sender === this.currentUser;
+                        
+                        if (isUserAtBottom || isFromCurrentUser) {
+                            setTimeout(() => {
+                                this.forceScrollToBottom();
+                            }, 50);
+                        }
+                    }
+                } else {
+                    const group = this.groups.find(g => g.group_id === message.groupId);
+                    if (group) {
+                        this.showNotification(`New message in ${group.group_name} from ${message.sender}`, 'info');
+                    }
+                }
+                return;
+            }
+            
+            // Handle regular messages (private/broadcast)
             const shouldDisplay = 
                 (this.currentChat === 'broadcast' && message.recipient === 'ALL') ||
                 (this.currentChat === message.sender) || 
@@ -1532,36 +1914,80 @@ forceScrollToBottom() {
                 $input.val('');
                 this.autoResizeTextarea();
                 
-                const optimisticMessage = {
-                    sender: this.currentUser,
-                    message: message,
-                    timestamp: new Date().toISOString(),
-                    isOptimistic: true
-                };
+                // Check if current chat is a group
+                const group = this.groups.find(g => g.group_id === this.currentChat);
+                const isGroup = !!group;
                 
-                const messageElement = this.createMessageElement(optimisticMessage);
-                const $messagesScroll = $('#messagesScroll');
-                if ($messagesScroll.length) {
-                    $messagesScroll.append(messageElement);
-                    
-                    // FIXED: Always scroll when user sends message
-                    setTimeout(() => {
-                        this.forceScrollToBottom();
-                    }, 50);
-                }
+                const timestamp = new Date().toISOString();
                 
-                if (this.currentChat === 'broadcast') {
-                    this.socket.emit('broadcast message', message);
-                } else {
-                    this.socket.emit('private message', {
+                if (isGroup) {
+                    // Group message
+                    const optimisticMessage = {
+                        groupId: this.currentChat,
                         sender: this.currentUser,
-                        recipient: this.currentChat,
+                        message: message,
+                        timestamp: timestamp,
+                        isOptimistic: true
+                    };
+                    
+                    const messageElement = this.createGroupMessageElement(optimisticMessage);
+                    const $messagesScroll = $('#messagesScroll');
+                    if ($messagesScroll.length) {
+                        $messagesScroll.append(messageElement);
+                        setTimeout(() => {
+                            this.forceScrollToBottom();
+                        }, 50);
+                    }
+                    
+                    // Send to server
+                    this.socket.emit('group message', {
+                        groupId: this.currentChat,
                         message: message
+                    }, (response) => {
+                        if (response && response.error) {
+                            this.showNotification(response.error, 'error');
+                            // Remove optimistic message if error
+                            $messagesScroll.find('[data-message-id="' + optimisticMessage.timestamp + '"]').remove();
+                        } else if (response && response.message) {
+                            // Replace optimistic message with real one
+                            const $optimistic = $messagesScroll.find('[data-message-id="' + optimisticMessage.timestamp + '"]');
+                            if ($optimistic.length) {
+                                $optimistic.replaceWith(this.createGroupMessageElement(response.message));
+                            }
+                        }
                     });
+                    
+                } else {
+                    // Private/broadcast message
+                    const optimisticMessage = {
+                        sender: this.currentUser,
+                        message: message,
+                        timestamp: timestamp,
+                        isOptimistic: true
+                    };
+                    
+                    const messageElement = this.createMessageElement(optimisticMessage);
+                    const $messagesScroll = $('#messagesScroll');
+                    if ($messagesScroll.length) {
+                        $messagesScroll.append(messageElement);
+                        setTimeout(() => {
+                            this.forceScrollToBottom();
+                        }, 50);
+                    }
+                    
+                    if (this.currentChat === 'broadcast') {
+                        this.socket.emit('broadcast message', message);
+                    } else {
+                        this.socket.emit('private message', {
+                            sender: this.currentUser,
+                            recipient: this.currentChat,
+                            message: message
+                        });
+                    }
                 }
                 
             } catch (error) {
-                this.showNotification('Failed to send message', 'error');
+                this.showNotification('Failed to send message: ' + error.message, 'error');
             }
         }
 
@@ -1591,7 +2017,6 @@ forceScrollToBottom() {
             }
         }
 
-        // REST OF YOUR METHODS REMAIN THE SAME
         setupPasteHandler() {
             $(document).on('paste', (e) => {
                 if (!this.currentChat) {
@@ -1789,13 +2214,16 @@ forceScrollToBottom() {
             return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
         }
 
-        uploadFile(file) {
+        async uploadFile(file) {
             return new Promise((resolve, reject) => {
                 if (!this.socket || !this.currentChat) {
                     reject(new Error('Not connected or no chat selected'));
                     return;
                 }
 
+                // Check if current chat is a group
+                const isGroup = this.groups.some(g => g.group_id === this.currentChat);
+                
                 const reader = new FileReader();
                 
                 reader.onload = (e) => {
@@ -1806,17 +2234,47 @@ forceScrollToBottom() {
                         const fileData = {
                             filename: file.name,
                             file: Array.from(uint8Array),
-                            recipient: this.currentChat === 'broadcast' ? 'ALL' : this.currentChat,
                             sender: this.currentUser,
                             fileType: file.type,
                             fileSize: file.size
                         };
 
-                        console.log('Sending file:', file.name, 'Size:', file.size, 'Type:', file.type);
+                        // Add groupId if sending to group
+                        if (isGroup) {
+                            fileData.groupId = this.currentChat;
+                            console.log('Sending file to group:', this.currentChat);
+                        } else {
+                            // For private/broadcast
+                            fileData.recipient = this.currentChat === 'broadcast' ? 'ALL' : this.currentChat;
+                            console.log('Sending file to:', fileData.recipient);
+                        }
                         
+                        // Create optimistic file message
+                        const optimisticFileMessage = {
+                            sender: this.currentUser,
+                            filename: file.name,
+                            fileSize: file.size,
+                            timestamp: new Date().toISOString(),
+                            isOptimistic: true,
+                            groupId: isGroup ? this.currentChat : null
+                        };
+                        
+                        const messageElement = isGroup ? 
+                            this.createGroupMessageElement(optimisticFileMessage) : 
+                            this.createMessageElement(optimisticFileMessage);
+                            
+                        const $messagesScroll = $('#messagesScroll');
+                        if ($messagesScroll.length) {
+                            $messagesScroll.append(messageElement);
+                            setTimeout(() => this.forceScrollToBottom(), 50);
+                        }
+                        
+                        // Send file
                         this.socket.emit('file', fileData, (response) => {
                             if (response && response.error) {
                                 reject(new Error(response.error));
+                                // Remove optimistic message
+                                $messagesScroll.find('[data-message-id="' + optimisticFileMessage.timestamp + '"]').remove();
                             } else {
                                 resolve(response);
                             }
@@ -1843,6 +2301,7 @@ forceScrollToBottom() {
             
             const isSender = msg.sender === this.currentUser;
             const isFileMessage = msg.filename || msg.filepath;
+            const isForwarded = msg.is_forwarded || msg.original_sender;
             
             if (isFileMessage) {
                 const time = this.formatTimestamp(msg.timestamp);
@@ -1852,11 +2311,21 @@ forceScrollToBottom() {
                 const fileUrl = msg.filepath;
                 
                 const messageDiv = $(`
-                    <div class="message ${isSender ? 'message-sent' : 'message-received'}">
+                    <div class="message ${isSender ? 'message-sent' : 'message-received'}"
+                         data-message-id="${msg.id || Date.now()}"
+                         data-sender="${msg.sender || 'Unknown'}"
+                         data-timestamp="${msg.timestamp || new Date().toISOString()}"
+                         data-type="${isForwarded ? 'forwarded' : 'normal'}">
                         <div class="message-header">
                             <span class="message-sender">${msg.sender || 'Unknown'}</span>
                             <span class="message-time">${time}</span>
                         </div>
+                        ${isForwarded ? `
+                            <div class="message-forwarded">
+                                <i class="fas fa-share"></i>
+                                Forwarded from ${msg.original_sender || msg.sender}
+                            </div>
+                        ` : ''}
                         <div class="file-message">
                             <div class="file-icon">${this.getFileIcon({name: fileName})}</div>
                             <div class="file-info">
@@ -1890,11 +2359,112 @@ forceScrollToBottom() {
                 const time = this.formatTimestamp(msg.timestamp);
                 
                 return $(`
-                    <div class="message ${isSender ? 'message-sent' : 'message-received'}">
+                    <div class="message ${isSender ? 'message-sent' : 'message-received'}"
+                         data-message-id="${msg.id || Date.now()}"
+                         data-sender="${msg.sender || 'Unknown'}"
+                         data-timestamp="${msg.timestamp || new Date().toISOString()}"
+                         data-type="${isForwarded ? 'forwarded' : 'normal'}">
                         <div class="message-header">
                             <span class="message-sender">${msg.sender || 'Unknown'}</span>
                             <span class="message-time">${time}</span>
                         </div>
+                        ${isForwarded ? `
+                            <div class="message-forwarded">
+                                <i class="fas fa-share"></i>
+                                Forwarded from ${msg.original_sender || msg.sender}
+                            </div>
+                        ` : ''}
+                        <div class="message-content">${this.escapeHtml(msg.message)}</div>
+                    </div>
+                `)[0];
+            } else {
+                return this.createSystemMessage(msg);
+            }
+        }
+
+        createGroupMessageElement(msg) {
+            if (!msg || typeof msg !== 'object') {
+                console.warn('Invalid group message received:', msg);
+                return this.createErrorMessage('Invalid message format');
+            }
+            
+            const isSender = msg.sender === this.currentUser;
+            const isFileMessage = msg.filename || msg.filepath;
+            const isForwarded = msg.is_forwarded || msg.original_sender;
+            
+            if (isFileMessage) {
+                const time = this.formatTimestamp(msg.timestamp);
+                const fileName = msg.filename || 'Unknown File';
+                const fileExt = fileName.split('.').pop().toLowerCase();
+                const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'].includes(fileExt);
+                const fileUrl = msg.filepath;
+                
+                const messageDiv = $(`
+                    <div class="message ${isSender ? 'message-sent' : 'message-received'} group-message"
+                         data-message-id="${msg.id || Date.now()}"
+                         data-sender="${msg.sender || 'Unknown'}"
+                         data-timestamp="${msg.timestamp || new Date().toISOString()}"
+                         data-type="${isForwarded ? 'forwarded' : 'normal'}"
+                         data-group-id="${msg.groupId || ''}">
+                        <div class="message-header">
+                            <span class="message-sender">${msg.sender || 'Unknown'}</span>
+                            <span class="message-time">${time}</span>
+                        </div>
+                        ${isForwarded ? `
+                            <div class="message-forwarded">
+                                <i class="fas fa-share"></i>
+                                Forwarded from ${msg.original_sender || msg.sender}
+                            </div>
+                        ` : ''}
+                        <div class="file-message">
+                            <div class="file-icon">${this.getFileIcon({name: fileName})}</div>
+                            <div class="file-info">
+                                <div class="file-name">${fileName}</div>
+                                <div class="file-size">${msg.fileSize ? this.formatFileSize(msg.fileSize) : 'File'}</div>
+                                ${isImage && fileUrl ? `
+                                    <div style="margin-top: 8px;">
+                                        <img src="${fileUrl}" class="image-message" 
+                                             style="max-width: 200px; max-height: 200px; border-radius: 8px; cursor: pointer; border: 1px solid var(--border-light);"
+                                             onerror="this.style.display='none'">
+                                    </div>
+                                ` : ''}
+                            </div>
+                            ${fileUrl ? `
+                                <a href="${fileUrl}" download="${fileName}" class="action-btn" style="text-decoration: none; color: inherit;" title="Download ${fileName}">
+                                    <i class="fas fa-download"></i>
+                                </a>
+                            ` : ''}
+                        </div>
+                    </div>
+                `);
+                
+                if (isImage && fileUrl) {
+                    messageDiv.find('img').on('click', () => {
+                        this.previewImage(fileUrl);
+                    });
+                }
+                
+                return messageDiv[0];
+            } else if (msg.message) {
+                const time = this.formatTimestamp(msg.timestamp);
+                
+                return $(`
+                    <div class="message ${isSender ? 'message-sent' : 'message-received'} group-message"
+                         data-message-id="${msg.id || Date.now()}"
+                         data-sender="${msg.sender || 'Unknown'}"
+                         data-timestamp="${msg.timestamp || new Date().toISOString()}"
+                         data-type="${isForwarded ? 'forwarded' : 'normal'}"
+                         data-group-id="${msg.groupId || ''}">
+                        <div class="message-header">
+                            <span class="message-sender">${msg.sender || 'Unknown'}</span>
+                            <span class="message-time">${time}</span>
+                        </div>
+                        ${isForwarded ? `
+                            <div class="message-forwarded">
+                                <i class="fas fa-share"></i>
+                                Forwarded from ${msg.original_sender || msg.sender}
+                            </div>
+                        ` : ''}
                         <div class="message-content">${this.escapeHtml(msg.message)}</div>
                     </div>
                 `)[0];
@@ -1954,6 +2524,7 @@ forceScrollToBottom() {
                 console.log('Connected to server');
                 this.showNotification('Connected to chat', 'success');
                 this.socket.emit('get registered users');
+                this.loadUserGroups();
             });
 
             this.socket.on('disconnect', () => {
@@ -1991,6 +2562,12 @@ forceScrollToBottom() {
                 console.log('Processed users:', users);
                 this.users = users;
                 this.renderUsers(users);
+                
+                // Also load groups if available
+                if (data.groups && Array.isArray(data.groups)) {
+                    this.groups = data.groups;
+                    this.renderGroups();
+                }
             });
 
             this.socket.on('update user list', (users) => {
@@ -2055,6 +2632,117 @@ forceScrollToBottom() {
             this.socket.on('error', (error) => {
                 this.showNotification(error.message, 'error');
             });
+
+            // Group-related socket listeners
+            this.socket.on('group created', (data) => {
+                console.log('Group created event received:', data);
+                this.showNotification(`Added to group: ${data.groupName}`, 'info');
+                this.loadUserGroups();
+            });
+
+            this.socket.on('group message', (msg) => {
+                console.log('Received group message:', msg);
+                this.handleIncomingMessage(msg);
+            });
+
+            this.socket.on('group file', (msg) => {
+                console.log('Received group file message:', msg);
+                this.handleIncomingMessage(msg);
+            });
+
+            this.socket.on('group members updated', (data) => {
+                console.log('Group members updated:', data);
+                if (this.currentChat === data.groupId) {
+                    this.showNotification(`${data.addedBy} added ${data.addedMembers.length} new member(s) to the group`, 'info');
+                }
+                this.loadUserGroups();
+            });
+
+            this.socket.on('group deleted', (data) => {
+                console.log('Group deleted:', data);
+                if (this.currentChat === data.groupId) {
+                    this.showNotification('This group has been deleted', 'warning');
+                    this.selectChat('broadcast');
+                }
+                this.loadUserGroups();
+            });
+
+            this.socket.on('group history', (data) => {
+                console.log('Received group history:', data);
+                if (data && data.messages) {
+                    this.renderMessages(data.messages, false);
+                }
+            });
+
+            // Forward message confirmation
+            this.socket.on('message forwarded', (data) => {
+                console.log('Message forwarded confirmation:', data);
+                if (data.success) {
+                    this.showNotification(`Message forwarded to ${data.count} recipient(s)`, 'success');
+                }
+            });
+
+            // GROUP MANAGEMENT SOCKET LISTENERS
+            this.socket.on('member added', (data) => {
+                console.log('Member added to group:', data);
+                if (this.currentChat === data.groupId) {
+                    this.showNotification(`${data.addedBy} added ${data.addedMembers.join(', ')} to the group`, 'info');
+                }
+                
+                // Reload group info if viewing it
+                if (this.currentGroupInfo && this.currentGroupInfo.group_id === data.groupId) {
+                    this.loadGroupMembers(data.groupId);
+                }
+                
+                this.loadUserGroups();
+            });
+
+            this.socket.on('member removed', (data) => {
+                console.log('Member removed from group:', data);
+                if (this.currentChat === data.groupId) {
+                    this.showNotification(`${data.removedBy} removed ${data.removedUser} from the group`, 'info');
+                }
+                
+                // Reload group info if viewing it
+                if (this.currentGroupInfo && this.currentGroupInfo.group_id === data.groupId) {
+                    this.loadGroupMembers(data.groupId);
+                }
+                
+                this.loadUserGroups();
+            });
+
+            this.socket.on('user left group', (data) => {
+                console.log('User left group:', data);
+                if (this.currentChat === data.groupId) {
+                    this.showNotification(`${data.username} left the group`, 'info');
+                }
+                
+                // If current user left, switch to broadcast
+                if (data.username === this.currentUser && this.currentChat === data.groupId) {
+                    this.selectChat('broadcast', 'broadcast');
+                    this.showNotification('You have left the group', 'info');
+                }
+                
+                // Reload group info if viewing it
+                if (this.currentGroupInfo && this.currentGroupInfo.group_id === data.groupId) {
+                    this.loadGroupMembers(data.groupId);
+                }
+                
+                this.loadUserGroups();
+            });
+
+            this.socket.on('admin transferred', (data) => {
+                console.log('Admin transferred:', data);
+                this.showNotification(`${data.oldAdmin} transferred ownership to ${data.newAdmin}`, 'info');
+                
+                // Reload group info if viewing it
+                if (this.currentGroupInfo && this.currentGroupInfo.group_id === data.groupId) {
+                    this.currentGroupInfo.created_by = data.newAdmin;
+                    this.loadGroupMembers(data.groupId);
+                }
+                
+                this.loadUserGroups();
+            });
         }
 
         setupEventListeners() {
@@ -2082,7 +2770,7 @@ forceScrollToBottom() {
             });
 
             $('.broadcast-item').on('click', () => {
-                this.selectChat('broadcast');
+                this.selectChat('broadcast', 'broadcast');
             });
 
             $('#userSearch').on('input', (e) => this.filterUsers($(e.target).val()));
@@ -2090,7 +2778,7 @@ forceScrollToBottom() {
             $('#usersList').on('click', '.chat-item', (e) => {
                 const username = $(e.currentTarget).data('username');
                 if (username) {
-                    this.selectChat(username);
+                    this.selectChat(username, 'user');
                     $('#sidebar').removeClass('active');
                 }
             });
@@ -2114,13 +2802,128 @@ forceScrollToBottom() {
             $('#closeImageModal').on('click', () => {
                 $('#imageModal').hide();
             });
+
+            // Group info click handler
+            $(document).on('click', '#chatHeader', () => {
+                if (this.currentChatType === 'group' && this.currentChat) {
+                    this.showGroupInfo(this.currentChat);
+                }
+            });
+        }
+
+        // GROUP-RELATED METHODS
+        setupGroupEventListeners() {
+            // Create group button
+            $('#createGroupBtn').off('click').on('click', () => {
+                console.log('Create group button clicked');
+                this.showCreateGroupModal();
+            });
+            
+            // Close group modal
+            $(document).on('click', '#closeGroupModal, #cancelGroupBtn', (e) => {
+                e.preventDefault();
+                $('#createGroupModal').hide();
+            });
+            
+            // Save group
+            $('#saveGroupBtn').off('click').on('click', () => {
+                this.createGroup();
+            });
+            
+            // Group item click
+            $('#groupsList').on('click', '.group-item', (e) => {
+                const groupId = $(e.currentTarget).data('group-id');
+                if (groupId) {
+                    this.selectGroup(groupId);
+                    $('#sidebar').removeClass('active');
+                }
+            });
+            
+            // Remove member tag
+            $('#selectedMembers').on('click', '.remove-member', (e) => {
+                const username = $(e.target).data('user');
+                $(`.user-select-checkbox[value="${username}"]`).prop('checked', false);
+                $(e.target).parent().remove();
+            });
+            
+            // Forward message modal
+            $(document).on('click', '#closeForwardModal, #cancelForwardBtn', () => {
+                $('#forwardModal').hide();
+                this.forwardingMessage = null;
+            });
+            
+            // Forward tab switching
+            $('.btn-tab').on('click', (e) => {
+                const type = $(e.target).data('type');
+                this.updateForwardRecipients(type);
+            });
+            
+            // Send forward
+            $('#sendForwardBtn').on('click', () => this.forwardMessage());
+            
+            // Group info modal
+            $(document).on('click', '#closeGroupInfoModal', () => {
+                $('#groupInfoModal').hide();
+                this.currentGroupInfo = null;
+            });
+            
+            // Group management buttons
+            $(document).on('click', '#addMembersBtn', () => {
+                this.showAddMembersSection();
+            });
+            
+            $(document).on('click', '#cancelAddMembers', () => {
+                $('#addMembersSection').hide();
+                $('#addMembersBtn').show();
+                $('#addMembersList').empty();
+            });
+            
+            $(document).on('click', '#saveAddedMembers', () => {
+                this.addMembersToGroup();
+            });
+            
+            $(document).on('click', '#deleteGroupBtn', () => {
+                this.deleteGroup();
+            });
+            
+            $(document).on('click', '#leaveGroupBtn', () => {
+                this.leaveGroup();
+            });
+            
+            $(document).on('click', '#leaveGroupBtnMember', () => {
+                this.leaveGroup();
+            });
+        }
+
+        setupContextMenuListeners() {
+            // Message right-click for context menu
+            $(document).on('contextmenu', '.message:not(.message-system)', (e) => {
+                e.preventDefault();
+                this.showMessageContextMenu(e);
+                return false;
+            });
+            
+            // Close context menu on click elsewhere
+            $(document).on('click', () => {
+                $('#messageContextMenu').hide();
+            });
+            
+            // Context menu actions
+            $(document).on('click', '.context-menu-item', (e) => {
+                const action = $(e.target).data('action');
+                this.handleMessageAction(action);
+            });
         }
 
         filterUsers(query) {
             const $userItems = $('.chat-item[data-username]');
+            const $groupItems = $('.group-item');
             const searchTerm = query.toLowerCase().trim();
             
             let hasVisibleUsers = false;
+            let hasVisibleGroups = false;
+            
+            // Filter users
             $userItems.each(function() {
                 const username = $(this).data('username').toLowerCase();
                 if (username.includes(searchTerm)) {
@@ -2130,28 +2933,41 @@ forceScrollToBottom() {
                     $(this).hide();
                 }
             });
-
-            const $usersList = $('#usersList');
-            let $noUsersMessage = $usersList.find('.no-users-message');
             
-            if (!hasVisibleUsers && searchTerm) {
-                if ($noUsersMessage.length === 0) {
-                    $noUsersMessage = $(`
-                        <div class="no-users-message" style="text-align: center; padding: 20px; color: var(--text-muted); font-style: italic;">
-                            No users found
-                        </div>
-                    `);
-                    $usersList.append($noUsersMessage);
+            // Filter groups
+            $groupItems.each(function() {
+                const groupName = $(this).find('.chat-name').text().toLowerCase();
+                if (groupName.includes(searchTerm)) {
+                    $(this).show();
+                    hasVisibleGroups = true;
+                } else {
+                    $(this).hide();
                 }
+            });
+
+            // Show/hide section headers based on visibility
+            if (searchTerm) {
+                $('.section-header:contains("My Groups")').toggle(hasVisibleGroups || searchTerm === '');
+                $('.section-header:contains("Active Conversations")').toggle(hasVisibleUsers || searchTerm === '');
             } else {
-                $noUsersMessage.remove();
+                $('.section-header').show();
             }
         }
 
-        selectChat(username) {
-            console.log('Selecting chat with:', username);
-            this.currentChat = username;
-            this.updateChatHeader(username);
+        selectChat(chatId, type = 'user') {
+            console.log('Selecting chat with:', chatId, 'Type:', type);
+            
+            this.currentChat = chatId;
+            this.currentChatType = type;
+            
+            if (type === 'group') {
+                this.selectedGroup = this.groups.find(g => g.group_id === chatId);
+                this.updateGroupHeader(chatId);
+            } else if (type === 'broadcast') {
+                this.updateChatHeader('broadcast');
+            } else {
+                this.updateChatHeader(chatId);
+            }
             
             this.messageOffset = 0;
             this.hasMoreMessages = true;
@@ -2164,14 +2980,24 @@ forceScrollToBottom() {
             $('#messagesContainer').show();
             $('#messageInputContainer').show();
             
-            this.loadMessages(username);
+            this.loadMessages(chatId, type);
             
             $('.chat-item').removeClass('active');
-            $(`.chat-item[data-username="${username}"], .broadcast-item`).addClass('active');
+            if (type === 'group') {
+                $(`.chat-item[data-group-id="${chatId}"]`).addClass('active');
+            } else if (type === 'broadcast') {
+                $('.broadcast-item').addClass('active');
+            } else {
+                $(`.chat-item[data-username="${chatId}"]`).addClass('active');
+            }
         }
 
-        loadMessages(chatId) {
-            console.log('Loading messages for:', chatId);
+        selectGroup(groupId) {
+            this.selectChat(groupId, 'group');
+        }
+
+        loadMessages(chatId, type = 'user') {
+            console.log('Loading messages for:', chatId, 'Type:', type);
             const $messagesScroll = $('#messagesScroll');
             if (!$messagesScroll.length) return;
             
@@ -2183,14 +3009,27 @@ forceScrollToBottom() {
             $messagesScroll.html('<div class="loading"><div class="spinner"></div></div>');
             $messagesScroll.scrollTop(0);
             
-            if (chatId === 'broadcast') {
-                console.log('Requesting broadcast history with pagination');
+            if (type === 'group') {
+                console.log('Requesting group history:', chatId);
+                this.socket.emit('get group history', { 
+                    groupId: chatId,
+                    offset: this.messageOffset, 
+                    limit: this.MESSAGES_PER_LOAD 
+                }, (response) => {
+                    if (response && response.messages) {
+                        this.renderMessages(response.messages, false);
+                    } else {
+                        $messagesScroll.html('<div style="text-align: center; padding: 40px; color: var(--text-muted);">No messages in this group yet</div>');
+                    }
+                });
+            } else if (chatId === 'broadcast') {
+                console.log('Requesting broadcast history');
                 this.socket.emit('get broadcast history', { 
                     offset: this.messageOffset, 
                     limit: this.MESSAGES_PER_LOAD 
                 });
             } else {
-                console.log('Requesting private history with pagination:', chatId);
+                console.log('Requesting private history:', chatId);
                 this.socket.emit('get history', { 
                     withUser: chatId,
                     offset: this.messageOffset,
@@ -2291,6 +3130,19 @@ forceScrollToBottom() {
                     $partnerStatus.text(user.is_online ? 'Online' : 'Offline');
                     $partnerAvatar.text(user.username.charAt(0).toUpperCase()).css('background', this.getAvatarColor(user.username));
                 }
+            }
+        }
+
+        updateGroupHeader(groupId) {
+            const $partnerName = $('#chatPartnerName');
+            const $partnerStatus = $('#partnerStatus');
+            const $partnerAvatar = $('#partnerAvatar');
+            
+            const group = this.groups.find(g => g.group_id === groupId);
+            if (group) {
+                $partnerName.text(group.group_name);
+                $partnerStatus.html(`<i class="fas fa-users"></i> ${group.memberCount || 0} members`);
+                $partnerAvatar.html('<i class="fas fa-users"></i>').css('background', 'linear-gradient(135deg, #a78bfa, #8b5cf6)');
             }
         }
 
@@ -2395,60 +3247,71 @@ forceScrollToBottom() {
             this.autoScrollEnabled = distanceFromBottom <= 200;
         }
 
- handleScroll() {
-    const $messagesScroll = $('#messagesScroll');
-    if (!$messagesScroll.length) return;
-    
-    const scrollTop = $messagesScroll.scrollTop();
+        handleScroll() {
+            const $messagesScroll = $('#messagesScroll');
+            if (!$messagesScroll.length) return;
+            
+            const scrollTop = $messagesScroll.scrollTop();
 
-    // FIXED: Check if we're near the top to load more messages
-    if (scrollTop <= 100 && this.hasMoreMessages && !this.isLoadingMessages) {
-        console.log('Loading more messages - reached top');
-        this.loadMoreMessages();
-    }
-    
-    this.checkAutoScroll();
-}
+            // FIXED: Check if we're near the top to load more messages
+            if (scrollTop <= 100 && this.hasMoreMessages && !this.isLoadingMessages) {
+                console.log('Loading more messages - reached top');
+                this.loadMoreMessages();
+            }
+            
+            this.checkAutoScroll();
+        }
 
-loadMoreMessages() {
-    if (this.isLoadingMessages || !this.hasMoreMessages) return;
-    
-    this.isLoadingMessages = true;
-    
-    const $messagesScroll = $('#messagesScroll');
-    if (!$messagesScroll.length) return;
-    
-    // Store current scroll position and height BEFORE loading
-    this.scrollPositionBeforeLoad = $messagesScroll[0].scrollHeight;
-    const currentScrollTop = $messagesScroll.scrollTop();
-    
-    console.log('Loading more messages, current offset:', this.messageOffset, 'Scroll top:', currentScrollTop);
-    
-    const $loadingIndicator = $(`
-        <div class="loading" style="margin-bottom: 10px;">
-            <div class="spinner"></div>
-            <span>Loading previous messages...</span>
-        </div>
-    `);
-    $messagesScroll.prepend($loadingIndicator);
-    
-    // Emit the request for more messages
-    if (this.currentChat === 'broadcast') {
-        this.socket.emit('get broadcast history', { 
-            offset: this.messageOffset, 
-            limit: this.MESSAGES_PER_LOAD 
-        });
-    } else {
-        this.socket.emit('get history', { 
-            withUser: this.currentChat,
-            offset: this.messageOffset,
-            limit: this.MESSAGES_PER_LOAD
-        });
-    }
-    
-    // Increment offset for next load
-    this.messageOffset += this.MESSAGES_PER_LOAD;
-}
+        loadMoreMessages() {
+            if (this.isLoadingMessages || !this.hasMoreMessages) return;
+            
+            this.isLoadingMessages = true;
+            
+            const $messagesScroll = $('#messagesScroll');
+            if (!$messagesScroll.length) return;
+            
+            // Store current scroll position and height BEFORE loading
+            this.scrollPositionBeforeLoad = $messagesScroll[0].scrollHeight;
+            const currentScrollTop = $messagesScroll.scrollTop();
+            
+            console.log('Loading more messages, current offset:', this.messageOffset, 'Scroll top:', currentScrollTop);
+            
+            const $loadingIndicator = $(`
+                <div class="loading" style="margin-bottom: 10px;">
+                    <div class="spinner"></div>
+                    <span>Loading previous messages...</span>
+                </div>
+            `);
+            $messagesScroll.prepend($loadingIndicator);
+            
+            // Emit the request for more messages
+            if (this.currentChat === 'broadcast') {
+                this.socket.emit('get broadcast history', { 
+                    offset: this.messageOffset, 
+                    limit: this.MESSAGES_PER_LOAD 
+                });
+            } else if (this.currentChatType === 'group') {
+                this.socket.emit('get group history', { 
+                    groupId: this.currentChat,
+                    offset: this.messageOffset,
+                    limit: this.MESSAGES_PER_LOAD
+                }, (response) => {
+                    if (response && response.messages) {
+                        this.renderMessages(response.messages, true);
+                    }
+                });
+            } else {
+                this.socket.emit('get history', { 
+                    withUser: this.currentChat,
+                    offset: this.messageOffset,
+                    limit: this.MESSAGES_PER_LOAD
+                });
+            }
+            
+            // Increment offset for next load
+            this.messageOffset += this.MESSAGES_PER_LOAD;
+        }
+
         renderUsers(users) {
             const $usersList = $('#usersList');
             if (!$usersList.length) return;
@@ -2513,6 +3376,853 @@ loadMoreMessages() {
                 </li>
             `;
         }
+
+        // GROUP METHODS
+        loadUserGroups() {
+            if (!this.socket) {
+                console.error('Socket not available');
+                return;
+            }
+            
+            console.log('Loading user groups...');
+            
+            this.socket.emit('get my groups', (response) => {
+                console.log('Received groups response:', response);
+                
+                if (response && response.groups) {
+                    console.log('Groups loaded:', response.groups.length);
+                    this.groups = response.groups;
+                    this.renderGroups();
+                } else if (response && response.error) {
+                    console.error('Error loading groups:', response.error);
+                    this.showNotification('Failed to load groups: ' + response.error, 'error');
+                    
+                    // Show error state
+                    const $groupsList = $('#groupsList');
+                    $groupsList.html(`
+                        <div style="text-align: center; padding: 20px; color: var(--danger);">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <div style="margin-top: 8px;">Failed to load groups</div>
+                        </div>
+                    `);
+                } else {
+                    console.log('No groups found or empty response');
+                    this.groups = [];
+                    this.renderGroups();
+                }
+            });
+        }
+
+        renderGroups() {
+            const $groupsList = $('#groupsList');
+            if (!$groupsList.length) {
+                console.error('Groups list element not found');
+                return;
+            }
+            
+            console.log('Rendering groups:', this.groups);
+            
+            // Clear loading state
+            $groupsList.find('.loading').remove();
+            
+            if (!this.groups || this.groups.length === 0) {
+                $groupsList.html(`
+                    <div style="text-align: center; padding: 40px 20px; color: var(--text-muted);">
+                        <i class="fas fa-users" style="font-size: 2rem; margin-bottom: 12px; opacity: 0.5;"></i>
+                        <div style="font-size: 0.9rem; margin-bottom: 8px;">No groups yet</div>
+                        <div style="font-size: 0.8rem; opacity: 0.7;">Create your first group!</div>
+                    </div>
+                `);
+                return;
+            }
+            
+            // Create group items
+            const groupsHtml = this.groups.map(group => {
+                console.log('Processing group:', group);
+                return `
+                    <li class="chat-item group-item" data-group-id="${group.group_id}">
+                        <div class="chat-avatar">
+                            <div class="avatar" style="background: linear-gradient(135deg, #a78bfa, #8b5cf6);">
+                                <i class="fas fa-users"></i>
+                            </div>
+                        </div>
+                        <div class="chat-info">
+                            <div class="chat-header">
+                                <span class="chat-name" style="color: var(--text-primary);">${group.group_name || 'Unnamed Group'}</span>
+                            </div>
+                            <div class="chat-last-message" style="color: var(--text-muted); font-size: 0.8rem;">
+                                ${group.memberCount || '0'} members • Created by ${group.created_by || 'Unknown'}
+                            </div>
+                        </div>
+                    </li>
+                `;
+            }).join('');
+            
+            $groupsList.html(groupsHtml);
+            console.log('Groups rendered successfully');
+        }
+
+        showCreateGroupModal() {
+            console.log('showCreateGroupModal called');
+            
+            if (!this.currentUser) {
+                this.showNotification('Please login first', 'error');
+                return;
+            }
+            
+            const $modal = $('#createGroupModal');
+            const $availableUsers = $('#availableUsers');
+            
+            // Clear previous content
+            $availableUsers.html('<div class="loading"><div class="spinner"></div><span>Loading users...</span></div>');
+            $('#selectedMembers').empty();
+            $('#groupNameInput').val('');
+            
+            // Show modal first
+            $modal.css('display', 'flex');
+            console.log('Modal displayed');
+            
+            // Then load users
+            this.populateAvailableUsers();
+        }
+
+        populateAvailableUsers() {
+            const $availableUsers = $('#availableUsers');
+            
+            if (!this.users || this.users.length === 0) {
+                $availableUsers.html(`
+                    <div style="text-align: center; padding: 20px; color: var(--text-muted);">
+                        <i class="fas fa-users" style="font-size: 2rem; margin-bottom: 8px; opacity: 0.5;"></i>
+                        <div>No users available</div>
+                        <small style="font-size: 0.8rem;">Tell others to join the chat!</small>
+                    </div>
+                `);
+                return;
+            }
+            
+            // Filter out current user and sort by online status
+            const filteredUsers = this.users
+                .filter(user => user.username !== this.currentUser)
+                .sort((a, b) => {
+                    if (a.is_online && !b.is_online) return -1;
+                    if (!a.is_online && b.is_online) return 1;
+                    return a.username.localeCompare(b.username);
+                });
+            
+            if (filteredUsers.length === 0) {
+                $availableUsers.html(`
+                    <div style="text-align: center; padding: 20px; color: var(--text-muted);">
+                        <i class="fas fa-user-plus" style="font-size: 2rem; margin-bottom: 8px; opacity: 0.5;"></i>
+                        <div>No other users available</div>
+                        <small style="font-size: 0.8rem;">Wait for others to join!</small>
+                    </div>
+                `);
+                return;
+            }
+            
+            const availableUsersHtml = filteredUsers.map(user => `
+                <div class="user-checkbox" style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: var(--radius-md); transition: var(--transition); cursor: pointer;">
+                    <input type="checkbox" 
+                           id="user_${user.username}" 
+                           value="${user.username}"
+                           class="user-select-checkbox"
+                           style="cursor: pointer;">
+                    <label for="user_${user.username}" style="cursor: pointer; flex: 1; display: flex; align-items: center; gap: 8px;">
+                        <div style="width: 32px; height: 32px; border-radius: 50%; background: ${this.getAvatarColor(user.username)}; display: flex; align-items: center; justify-content: center; color: white; font-size: 0.9rem;">
+                            ${user.username.charAt(0).toUpperCase()}
+                        </div>
+                        <div style="flex: 1;">
+                            <div style="font-weight: 500;">${user.username}</div>
+                            <div style="font-size: 0.8rem; color: ${user.is_online ? 'var(--accent)' : 'var(--text-muted)'}">
+                                ${user.is_online ? '● Online' : '○ Offline'}
+                            </div>
+                        </div>
+                    </label>
+                </div>
+            `).join('');
+            
+            $availableUsers.html(availableUsersHtml);
+            
+            // Add click handler for checkboxes
+            $('.user-select-checkbox').on('change', (e) => {
+                const checkbox = $(e.target);
+                const username = checkbox.val();
+                const isChecked = checkbox.is(':checked');
+                
+                if (isChecked) {
+                    // Add to selected members
+                    const tag = $(`
+                        <span class="member-tag">
+                            ${username}
+                            <span class="remove-member" data-user="${username}">&times;</span>
+                        </span>
+                    `);
+                    $('#selectedMembers').append(tag);
+                } else {
+                    // Remove from selected members
+                    $(`.remove-member[data-user="${username}"]`).parent().remove();
+                }
+            });
+        }
+
+        createGroup() {
+            const groupName = $('#groupNameInput').val().trim();
+            if (!groupName) {
+                this.showNotification('Please enter a group name', 'error');
+                return;
+            }
+            
+            const selectedUsers = [];
+            $('.user-select-checkbox:checked').each(function() {
+                selectedUsers.push($(this).val());
+            });
+            
+            if (selectedUsers.length === 0) {
+                this.showNotification('Please select at least one member', 'error');
+                return;
+            }
+            
+            this.socket.emit('create group', {
+                groupName: groupName,
+                members: selectedUsers
+            }, (response) => {
+                if (response && response.success) {
+                    this.showNotification('Group created successfully', 'success');
+                    $('#createGroupModal').hide();
+                    this.loadUserGroups();
+                } else {
+                    this.showNotification(response.error || 'Failed to create group', 'error');
+                }
+            });
+        }
+
+        showGroupInfo(groupId) {
+            const $modal = $('#groupInfoModal');
+            const group = this.groups.find(g => g.group_id === groupId);
+            
+            if (!group) return;
+            
+            this.currentGroupInfo = group;
+            $('#groupInfoName').text(group.group_name);
+            $('#groupInfoCreator').text(`Created by ${group.created_by}`);
+            
+            // Check if current user is creator
+            const isCreator = group.created_by === this.currentUser;
+            $('#groupAdminActions').toggle(isCreator);
+            $('#groupMemberActions').toggle(!isCreator);
+            
+            // Load members
+            this.loadGroupMembers(groupId);
+            
+            $modal.css('display', 'flex');
+        }
+
+        loadGroupMembers(groupId) {
+            this.socket.emit('get group members', { groupId: groupId }, (response) => {
+                if (response && response.members) {
+                    $('#memberCount').text(response.members.length);
+                    
+                    const membersHtml = response.members.map(member => {
+                        const isCreator = member.username === this.currentGroupInfo.created_by;
+                        const isCurrentUser = member.username === this.currentUser;
+                        const canRemove = !isCreator && !isCurrentUser && this.currentGroupInfo.created_by === this.currentUser;
+                        const canTransfer = !isCreator && !isCurrentUser && this.currentGroupInfo.created_by === this.currentUser;
+                        
+                        return `
+                            <div class="member-item" data-username="${member.username}" style="display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border-bottom: 1px solid var(--border-light); transition: var(--transition);">
+                                <div style="display: flex; align-items: center; gap: 12px;">
+                                    <div style="width: 36px; height: 36px; border-radius: 50%; background: ${this.getAvatarColor(member.username)}; display: flex; align-items: center; justify-content: center; color: white; font-weight: 600;">
+                                        ${member.username.charAt(0).toUpperCase()}
+                                    </div>
+                                    <div>
+                                        <div style="font-weight: 500; margin-bottom: 2px;">
+                                            ${member.username}
+                                            ${isCreator ? ' <span style="color: var(--warning); font-size: 0.8rem;">(Creator)</span>' : ''}
+                                        </div>
+                                        <div style="font-size: 0.8rem; color: ${member.is_online ? 'var(--accent)' : 'var(--text-muted)'}">
+                                            ${member.is_online ? '● Online' : `Last seen ${this.formatLastSeen(member.last_seen)}`}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    ${canRemove ? `
+                                        <button class="remove-member-btn" data-username="${member.username}" 
+                                                style="background: none; border: 1px solid var(--danger); color: var(--danger); border-radius: var(--radius-md); padding: 4px 12px; font-size: 0.8rem; cursor: pointer; transition: var(--transition);">
+                                            Remove
+                                        </button>
+                                    ` : ''}
+                                    ${canTransfer ? `
+                                        <button class="transfer-admin-btn" data-username="${member.username}" 
+                                                style="background: none; border: 1px solid var(--primary); color: var(--primary); border-radius: var(--radius-md); padding: 4px 12px; font-size: 0.8rem; cursor: pointer; transition: var(--transition);">
+                                            Make Admin
+                                        </button>
+                                    ` : ''}
+                                    <div style="font-size: 0.8rem; color: var(--text-muted);">
+                                        ${isCreator ? 'Admin' : 'Member'}
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                    
+                    $('#groupMembersList').html(membersHtml);
+                    
+                    // Add event handlers
+                    $('.remove-member-btn').on('click', (e) => {
+                        const username = $(e.target).data('username');
+                        this.removeMemberFromGroup(username);
+                    });
+                    
+                    $('.transfer-admin-btn').on('click', (e) => {
+                        const username = $(e.target).data('username');
+                        this.transferAdmin(username);
+                    });
+                }
+            });
+        }
+
+        removeMemberFromGroup(username) {
+            if (!this.currentGroupInfo) return;
+            
+            if (confirm(`Remove ${username} from ${this.currentGroupInfo.group_name}?`)) {
+                this.socket.emit('remove group member', {
+                    groupId: this.currentGroupInfo.group_id,
+                    username: username
+                }, (response) => {
+                    if (response && response.success) {
+                        this.showNotification(`${username} removed from group`, 'success');
+                        this.loadGroupMembers(this.currentGroupInfo.group_id);
+                        
+                        // Update groups list
+                        this.loadUserGroups();
+                    } else {
+                        this.showNotification(response?.error || 'Failed to remove member', 'error');
+                    }
+                });
+            }
+        }
+
+        transferAdmin(username) {
+            if (!this.currentGroupInfo) return;
+            
+            if (confirm(`Transfer group ownership to ${username}? You will become a regular member.`)) {
+                this.socket.emit('transfer group admin', {
+                    groupId: this.currentGroupInfo.group_id,
+                    newAdmin: username
+                }, (response) => {
+                    if (response && response.success) {
+                        this.showNotification(`Group ownership transferred to ${username}`, 'success');
+                        this.loadGroupMembers(this.currentGroupInfo.group_id);
+                        this.loadUserGroups();
+                    } else {
+                        this.showNotification(response?.error || 'Failed to transfer ownership', 'error');
+                    }
+                });
+            }
+        }
+
+        showAddMembersSection() {
+            $('#addMembersSection').show();
+            $('#addMembersBtn').hide();
+            
+            // Populate available users (excluding current members)
+            this.populateAvailableUsersForGroup();
+        }
+
+        populateAvailableUsersForGroup() {
+            if (!this.currentGroupInfo) return;
+            
+            // First get current members
+            this.socket.emit('get group members', { 
+                groupId: this.currentGroupInfo.group_id 
+            }, (response) => {
+                if (response && response.members) {
+                    const currentMembers = response.members.map(m => m.username);
+                    
+                    // Filter out current members and current user
+                    const availableUsers = this.users
+                        .filter(user => 
+                            user.username !== this.currentUser && 
+                            !currentMembers.includes(user.username)
+                        )
+                        .sort((a, b) => {
+                            if (a.is_online && !b.is_online) return -1;
+                            if (!a.is_online && b.is_online) return 1;
+                            return a.username.localeCompare(b.username);
+                        });
+                    
+                    if (availableUsers.length === 0) {
+                        $('#addMembersList').html(`
+                            <div style="text-align: center; padding: 20px; color: var(--text-muted);">
+                                <i class="fas fa-users" style="font-size: 2rem; margin-bottom: 8px; opacity: 0.5;"></i>
+                                <div>No users available to add</div>
+                                <small style="font-size: 0.8rem;">All users are already in the group</small>
+                            </div>
+                        `);
+                        return;
+                    }
+                    
+                    const availableUsersHtml = availableUsers.map(user => `
+                        <div class="user-checkbox" style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: var(--radius-md); cursor: pointer; transition: var(--transition);">
+                            <input type="checkbox" 
+                                   id="add_user_${user.username}" 
+                                   value="${user.username}"
+                                   class="add-member-checkbox"
+                                   style="cursor: pointer;">
+                            <label for="add_user_${user.username}" style="cursor: pointer; flex: 1; display: flex; align-items: center; gap: 8px;">
+                                <div style="width: 32px; height: 32px; border-radius: 50%; background: ${this.getAvatarColor(user.username)}; display: flex; align-items: center; justify-content: center; color: white; font-size: 0.9rem;">
+                                    ${user.username.charAt(0).toUpperCase()}
+                                </div>
+                                <div style="flex: 1;">
+                                    <div style="font-weight: 500;">${user.username}</div>
+                                    <div style="font-size: 0.8rem; color: ${user.is_online ? 'var(--accent)' : 'var(--text-muted)'}">
+                                        ${user.is_online ? '● Online' : '○ Offline'}
+                                    </div>
+                                </div>
+                            </label>
+                        </div>
+                    `).join('');
+                    
+                    $('#addMembersList').html(availableUsersHtml);
+                }
+            });
+        }
+
+        addMembersToGroup() {
+            if (!this.currentGroupInfo) return;
+            
+            const selectedUsers = [];
+            $('.add-member-checkbox:checked').each(function() {
+                selectedUsers.push($(this).val());
+            });
+            
+            if (selectedUsers.length === 0) {
+                this.showNotification('Please select at least one user to add', 'error');
+                return;
+            }
+            
+            this.socket.emit('add group members', {
+                groupId: this.currentGroupInfo.group_id,
+                members: selectedUsers
+            }, (response) => {
+                if (response && response.success) {
+                    this.showNotification(`Added ${selectedUsers.length} member(s) to group`, 'success');
+                    
+                    // Reset add members section
+                    $('#addMembersSection').hide();
+                    $('#addMembersBtn').show();
+                    $('#addMembersList').empty();
+                    
+                    // Reload group members
+                    this.loadGroupMembers(this.currentGroupInfo.group_id);
+                    
+                    // Update groups list
+                    this.loadUserGroups();
+                    
+                } else {
+                    this.showNotification(response?.error || 'Failed to add members', 'error');
+                }
+            });
+        }
+
+        deleteGroup() {
+            if (!this.currentGroupInfo) return;
+            
+            if (confirm(`Are you sure you want to delete "${this.currentGroupInfo.group_name}"? This action cannot be undone.`)) {
+                this.socket.emit('delete group', {
+                    groupId: this.currentGroupInfo.group_id
+                }, (response) => {
+                    if (response && response.success) {
+                        this.showNotification('Group deleted successfully', 'success');
+                        $('#groupInfoModal').hide();
+                        
+                        // If currently viewing this group, switch to broadcast
+                        if (this.currentChat === this.currentGroupInfo.group_id) {
+                            this.selectChat('broadcast', 'broadcast');
+                        }
+                        
+                        // Reload groups
+                        this.loadUserGroups();
+                        this.currentGroupInfo = null;
+                        
+                    } else {
+                        this.showNotification(response?.error || 'Failed to delete group', 'error');
+                    }
+                });
+            }
+        }
+
+        leaveGroup() {
+            if (!this.currentGroupInfo) return;
+            
+            if (this.currentGroupInfo.created_by === this.currentUser) {
+                this.showNotification('As group creator, you cannot leave. You must delete the group or transfer ownership.', 'error');
+                return;
+            }
+            
+            if (confirm(`Are you sure you want to leave "${this.currentGroupInfo.group_name}"?`)) {
+                this.socket.emit('leave group', {
+                    groupId: this.currentGroupInfo.group_id
+                }, (response) => {
+                    if (response && response.success) {
+                        this.showNotification('You have left the group', 'success');
+                        $('#groupInfoModal').hide();
+                        
+                        // If currently viewing this group, switch to broadcast
+                        if (this.currentChat === this.currentGroupInfo.group_id) {
+                            this.selectChat('broadcast', 'broadcast');
+                        }
+                        
+                        // Reload groups
+                        this.loadUserGroups();
+                        this.currentGroupInfo = null;
+                        
+                    } else {
+                        this.showNotification(response?.error || 'Failed to leave group', 'error');
+                    }
+                });
+            }
+        }
+
+        showForwardModal(messageData) {
+            if (!messageData) {
+                this.showNotification('No message selected', 'error');
+                return;
+            }
+            
+            this.forwardingMessage = messageData;
+            const $modal = $('#forwardModal');
+            const $preview = $('#forwardMessagePreview');
+            
+            // Check if it's a file message
+            const isFileMessage = messageData.filename || messageData.filepath;
+            
+            // Create preview based on message type
+            let previewHtml = `
+                <div style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 4px;">
+                    From: ${messageData.sender || messageData.original_sender || 'Unknown'}
+                </div>
+                <div style="background: var(--bg-primary); padding: 12px; border-radius: var(--radius-md); border: 1px solid var(--border-light);">
+            `;
+            
+            if (isFileMessage) {
+                // File message preview
+                previewHtml += `
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <div style="font-size: 2rem; opacity: 0.8;">
+                            ${this.getFileIcon({name: messageData.filename || 'file'})}
+                        </div>
+                        <div style="flex: 1;">
+                            <div style="font-weight: 500; margin-bottom: 4px;">${messageData.filename || 'File'}</div>
+                            <div style="font-size: 0.8rem; color: var(--text-muted);">
+                                ${messageData.fileSize || 'File'} • ${messageData.fileType || 'Unknown type'}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else if (messageData.message) {
+                // Text message preview
+                previewHtml += this.escapeHtml(messageData.message);
+            } else {
+                previewHtml += 'Message';
+            }
+            
+            previewHtml += '</div>';
+            $preview.html(previewHtml);
+            
+            // Populate recipients
+            this.updateForwardRecipients('users');
+            
+            $modal.css('display', 'flex');
+        }
+
+        updateForwardRecipients(type) {
+            const $recipientsList = $('#forwardRecipients');
+            let recipientsHtml = '';
+            
+            if (type === 'users') {
+                recipientsHtml = this.users
+                    .filter(user => user.username !== this.currentUser)
+                    .map(user => `
+                        <div class="user-checkbox" style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: var(--radius-md); cursor: pointer; transition: var(--transition);">
+                            <input type="checkbox" 
+                                   id="forward_user_${user.username}" 
+                                   value="${user.username}"
+                                   data-type="user"
+                                   class="forward-select-checkbox"
+                                   style="cursor: pointer;">
+                            <label for="forward_user_${user.username}" style="cursor: pointer; flex: 1; display: flex; align-items: center; gap: 8px;">
+                                <div style="width: 28px; height: 28px; border-radius: 50%; background: ${this.getAvatarColor(user.username)}; display: flex; align-items: center; justify-content: center; color: white; font-size: 0.8rem;">
+                                    ${user.username.charAt(0).toUpperCase()}
+                                </div>
+                                <div style="flex: 1;">
+                                    <div style="font-weight: 500;">${user.username}</div>
+                                    <div style="font-size: 0.8rem; color: ${user.is_online ? 'var(--accent)' : 'var(--text-muted)'}">
+                                        ${user.is_online ? '● Online' : '○ Offline'}
+                                    </div>
+                                </div>
+                            </label>
+                        </div>
+                    `).join('');
+                    
+                if (recipientsHtml === '') {
+                    recipientsHtml = '<div style="text-align: center; padding: 20px; color: var(--text-muted);">No users available</div>';
+                }
+            } else {
+                // Groups tab
+                recipientsHtml = this.groups.map(group => `
+                    <div class="user-checkbox" style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: var(--radius-md); cursor: pointer; transition: var(--transition);">
+                        <input type="checkbox" 
+                               id="forward_group_${group.group_id}" 
+                               value="${group.group_id}"
+                               data-type="group"
+                               class="forward-select-checkbox"
+                               style="cursor: pointer;">
+                        <label for="forward_group_${group.group_id}" style="cursor: pointer; flex: 1; display: flex; align-items: center; gap: 8px;">
+                            <div style="width: 28px; height: 28px; border-radius: 50%; background: linear-gradient(135deg, #a78bfa, #8b5cf6); display: flex; align-items: center; justify-content: center; color: white; font-size: 0.9rem;">
+                                <i class="fas fa-users"></i>
+                            </div>
+                            <div style="flex: 1;">
+                                <div style="font-weight: 500;">${group.group_name}</div>
+                                <div style="font-size: 0.8rem; color: var(--text-muted);">
+                                    ${group.memberCount || '0'} members
+                                </div>
+                            </div>
+                        </label>
+                    </div>
+                `).join('');
+                
+                if (recipientsHtml === '') {
+                    recipientsHtml = '<div style="text-align: center; padding: 20px; color: var(--text-muted);">No groups available</div>';
+                }
+            }
+            
+            $recipientsList.html(recipientsHtml);
+            
+            // Update tab buttons
+            $('.btn-tab').removeClass('active');
+            $(`.btn-tab[data-type="${type}"]`).addClass('active');
+        }
+
+        forwardMessage() {
+            if (!this.forwardingMessage) {
+                this.showNotification('No message selected to forward', 'error');
+                return;
+            }
+            
+            const selectedRecipients = [];
+            $(`.forward-select-checkbox:checked`).each(function() {
+                selectedRecipients.push({
+                    id: $(this).val(),
+                    type: $(this).data('type')
+                });
+            });
+            
+            if (selectedRecipients.length === 0) {
+                this.showNotification('Please select at least one recipient', 'error');
+                return;
+            }
+            
+            // Prepare forward data
+            const forwardData = {
+                originalMessage: {
+                    sender: this.forwardingMessage.sender || this.currentUser,
+                    message: this.forwardingMessage.message,
+                    filename: this.forwardingMessage.filename,
+                    filepath: this.forwardingMessage.filepath,
+                    fileSize: this.forwardingMessage.fileSize,
+                    is_forwarded: true,
+                    original_sender: this.forwardingMessage.original_sender || this.forwardingMessage.sender,
+                    original_timestamp: this.forwardingMessage.timestamp
+                },
+                recipients: selectedRecipients.map(r => ({
+                    id: r.id,
+                    type: r.type
+                }))
+            };
+            
+            console.log('Forwarding message:', forwardData);
+            
+            this.socket.emit('forward message', forwardData, (response) => {
+                if (response && response.success) {
+                    this.showNotification(`Message forwarded to ${selectedRecipients.length} recipient(s)`, 'success');
+                    $('#forwardModal').hide();
+                    this.forwardingMessage = null;
+                } else {
+                    this.showNotification(response?.error || 'Failed to forward message', 'error');
+                }
+            });
+        }
+
+        showMessageContextMenu(e) {
+            const $message = $(e.currentTarget);
+            const messageId = $message.data('message-id');
+            const sender = $message.data('sender');
+            
+            // Get the actual message content
+            const messageContent = $message.find('.message-content').text();
+            const filename = $message.find('.file-name').text();
+            
+            // Store message data for context actions
+            const messageData = {
+                id: messageId,
+                sender: sender,
+                element: $message,
+                message: messageContent,
+                filename: filename,
+                filepath: $message.find('img').attr('src') || $message.find('a[download]').attr('href'),
+                fileSize: $message.find('.file-size').text(),
+                timestamp: $message.data('timestamp')
+            };
+            
+            // Only show forward option for non-system messages
+            const isSystem = $message.hasClass('message-system');
+            const $forwardOption = $('#messageContextMenu .context-menu-item[data-action="forward"]');
+            $forwardOption.toggle(!isSystem);
+            
+            $('#messageContextMenu')
+                .css({
+                    left: e.pageX,
+                    top: e.pageY,
+                    display: 'block'
+                })
+                .data('message', messageData);
+            
+            e.preventDefault();
+            return false;
+        }
+
+      handleMessageAction(action) {
+    const messageData = $('#messageContextMenu').data('message');
+    if (!messageData) return;
+    
+    const $message = messageData.element;
+    
+    switch(action) {
+        case 'reply':
+            this.replyToMessage(messageData);
+            break;
+        case 'forward':
+            const message = this.getMessageData($message);
+            this.showForwardModal(message);
+            break;
+        case 'delete':
+            this.deleteMessage(messageData);
+            break;
+        case 'copy':
+            this.copyMessageText($message);
+            break;
+    }
+    
+    $('#messageContextMenu').hide();
+}
+        getMessageData($message) {
+            return {
+                id: $message.data('message-id'),
+                sender: $message.data('sender'),
+                message: $message.find('.message-content').text(),
+                timestamp: $message.data('timestamp'),
+                filename: $message.find('.file-name').text(),
+                filepath: $message.find('img').attr('src') || $message.find('a[download]').attr('href')
+            };
+        }
+
+        copyMessageText($message) {
+            const text = $message.find('.message-content').text();
+            if (text) {
+                navigator.clipboard.writeText(text).then(() => {
+                    this.showNotification('Message copied to clipboard', 'success');
+                });
+            }
+        }
+
+        replyToMessage(messageData) {
+            const $input = $('#messageInput');
+            const sender = messageData.sender;
+            $input.val(`@${sender} `).focus();
+            this.showNotification(`Replying to ${sender}`, 'info');
+        }
+
+      // Add this method to your EMRIGHS class
+deleteMessage(messageData) {
+    if (!messageData || !messageData.id) {
+        this.showNotification('Invalid message data', 'error');
+        return;
+    }
+
+    // Check if user can delete the message
+    const $message = messageData.element;
+    const sender = $message.data('sender');
+    const isSender = sender === this.currentUser;
+    const messageType = $message.hasClass('group-message') ? 'group' : 'private';
+    const groupId = $message.data('group-id');
+
+    // For broadcast messages
+    let actualMessageType = messageType;
+    if (this.currentChat === 'broadcast') {
+        actualMessageType = 'broadcast';
+    }
+
+    // Ask for confirmation
+    if (!confirm('Are you sure you want to delete this message?')) {
+        return;
+    }
+
+    console.log('Deleting message:', {
+        messageId: messageData.id,
+        messageType: actualMessageType,
+        groupId: groupId,
+        user: this.currentUser,
+        sender: sender
+    });
+
+    // Send delete request to server
+    this.socket.emit('delete message', {
+        messageId: messageData.id,
+        messageType: actualMessageType,
+        groupId: groupId || null
+    }, (response) => {
+        if (response && response.success) {
+            this.showNotification('Message deleted', 'success');
+            
+            // Remove message from UI
+            this.removeMessageFromUI(messageData.id, actualMessageType);
+            
+        } else {
+            const errorMsg = response?.error || 'Failed to delete message';
+            this.showNotification(errorMsg, 'error');
+            
+            // Check specific error cases
+            if (errorMsg.includes('cannot delete') || errorMsg.includes('permission')) {
+                console.log('Delete permission denied for message:', messageData.id);
+            }
+        }
+    });
+}
+
+// Add this helper method to remove message from UI
+removeMessageFromUI(messageId, messageType) {
+    const $messagesScroll = $('#messagesScroll');
+    
+    // Find and remove the message element
+    const messageSelector = messageType === 'group' ? 
+        `.message[data-message-id="${messageId}"]` : 
+        `.message:not(.group-message)[data-message-id="${messageId}"]`;
+    
+    const $message = $messagesScroll.find(messageSelector);
+    
+    if ($message.length) {
+        // Create a "deleted message" placeholder
+        const deletedMessageHtml = `
+            <div class="message message-system" data-message-id="${messageId}">
+                <i class="fas fa-trash" style="margin-right: 8px;"></i>
+                Message deleted
+            </div>
+        `;
+        
+        $message.replaceWith(deletedMessageHtml);
+    }
+}
     }
 
     // Make methods available globally for onclick handlers
@@ -2544,10 +4254,32 @@ loadMoreMessages() {
         if ($(e.target).is('#uploadPreview')) {
             chat.hideUploadPreview();
         }
+        if ($(e.target).is('#createGroupModal')) {
+            $('#createGroupModal').hide();
+        }
+        if ($(e.target).is('#forwardModal')) {
+            $('#forwardModal').hide();
+        }
+        if ($(e.target).is('#groupInfoModal')) {
+            $('#groupInfoModal').hide();
+        }
     });
 
     // Make chat available globally
     window.chat = chat;
-    </script>
+
+    // Add direct click handler for create group button (fallback)
+    $(document).ready(function() {
+        $('#createGroupBtn').css({
+            'display': 'flex',
+            'opacity': '1',
+            'visibility': 'visible',
+            'position': 'relative',
+            'z-index': '100'
+        }).off('click').on('click', function() {
+            chat.showCreateGroupModal();
+        });
+    });
+</script>
 </body>
 </html>

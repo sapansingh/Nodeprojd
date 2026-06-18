@@ -39,6 +39,8 @@ db.query(`
         last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     )
 `);
+
+// Modified messages table with deleted_by field
 db.query(`
     CREATE TABLE IF NOT EXISTS messages (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -49,7 +51,10 @@ db.query(`
         filepath TEXT,
         filetype VARCHAR(100),
         filesize BIGINT,
-        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        deleted_for_sender BOOLEAN DEFAULT FALSE,
+        deleted_for_recipient BOOLEAN DEFAULT FALSE,
+        deleted_at TIMESTAMP NULL
     )
 `);
 
@@ -74,6 +79,7 @@ db.query(`
     )
 `);
 
+// Modified group_messages table with deleted_by field
 db.query(`
     CREATE TABLE IF NOT EXISTS group_messages (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -88,7 +94,23 @@ db.query(`
         is_forwarded BOOLEAN DEFAULT FALSE,
         original_sender VARCHAR(255),
         original_timestamp TIMESTAMP,
+        deleted_for_sender BOOLEAN DEFAULT FALSE,
+        deleted_for_group BOOLEAN DEFAULT FALSE,
+        deleted_by VARCHAR(255),
+        deleted_at TIMESTAMP NULL,
         FOREIGN KEY (group_id) REFERENCES groups(group_id) ON DELETE CASCADE
+    )
+`);
+
+// Table to track deleted messages per user
+db.query(`
+    CREATE TABLE IF NOT EXISTS deleted_messages (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id VARCHAR(255),
+        message_id INT,
+        message_type ENUM('private', 'group'),
+        deleted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_user_messages (user_id, message_type, message_id)
     )
 `);
 
@@ -281,7 +303,7 @@ io.on('connection', (socket) => {
         sendCompleteUserListToAll();
     });
 
-    // Private chat history
+    // Private chat history - FILTER DELETED MESSAGES
     socket.on('get history', (data) => {
         const withUser = data.withUser;
         const offset = data.offset || 0;
@@ -289,21 +311,30 @@ io.on('connection', (socket) => {
         
         db.query(`
             SELECT * FROM messages
-            WHERE (sender = ? AND recipient = ?)
-               OR (sender = ? AND recipient = ?)
+            WHERE (
+                (sender = ? AND recipient = ? AND deleted_for_sender = FALSE)
+                OR (sender = ? AND recipient = ? AND deleted_for_recipient = FALSE)
+            )
             ORDER BY timestamp DESC
             LIMIT ? OFFSET ?
         `, [socket.username, withUser, withUser, socket.username, limit, offset], (err, results) => {
             if (!err) {
+                // Filter out messages that the user has deleted
+                const filteredResults = results.filter(msg => {
+                    if (msg.sender === socket.username && msg.deleted_for_sender) return false;
+                    if (msg.recipient === socket.username && msg.deleted_for_recipient) return false;
+                    return true;
+                });
+                
                 // Reverse to get chronological order
-                socket.emit('history', results.reverse());
+                socket.emit('history', filteredResults.reverse());
             } else {
                 console.error('Error fetching history:', err);
             }
         });
     });
 
-    // Broadcast history
+    // Broadcast history - FILTER DELETED MESSAGES
     socket.on('get broadcast history', (data) => {
         const offset = data.offset || 0;
         const limit = data.limit || 60;
@@ -311,12 +342,22 @@ io.on('connection', (socket) => {
         db.query(`
             SELECT * FROM messages 
             WHERE recipient = 'ALL' 
+            AND (
+                (sender = ? AND deleted_for_sender = FALSE)
+                OR (sender != ?)
+            )
             ORDER BY timestamp DESC 
             LIMIT ? OFFSET ?
-        `, [limit, offset], (err, results) => {
+        `, [socket.username, socket.username, limit, offset], (err, results) => {
             if (!err) {
+                // Filter out broadcast messages that the user has deleted
+                const filteredResults = results.filter(msg => {
+                    if (msg.sender === socket.username && msg.deleted_for_sender) return false;
+                    return true;
+                });
+                
                 // Reverse to get chronological order
-                socket.emit('history', results.reverse());
+                socket.emit('history', filteredResults.reverse());
             } else {
                 console.error('Error fetching broadcast history:', err);
             }
@@ -757,16 +798,20 @@ io.on('connection', (socket) => {
             });
     });
 
-    // Get Group History
+    // Get Group History - FILTER DELETED MESSAGES
     socket.on('get group history', (data, callback) => {
         const { groupId, offset = 0, limit = 50 } = data;
         
         db.query(`
             SELECT * FROM group_messages 
             WHERE group_id = ? 
+            AND (
+                (sender = ? AND deleted_for_sender = FALSE)
+                OR (sender != ? AND deleted_for_group = FALSE)
+            )
             ORDER BY timestamp DESC 
             LIMIT ? OFFSET ?
-        `, [groupId, limit, offset], (err, results) => {
+        `, [groupId, socket.username, socket.username, limit, offset], (err, results) => {
             if (err) {
                 console.error('Error fetching group history:', err);
                 if (callback) callback({ error: 'Failed to fetch history' });
@@ -775,6 +820,246 @@ io.on('connection', (socket) => {
             
             if (callback) callback({ messages: results.reverse() });
         });
+    });
+
+    // DELETE MESSAGE HANDLER - FIXED VERSION
+    socket.on('delete message', (data, callback) => {
+        const { messageId, messageType, groupId } = data;
+        
+        console.log('Delete message request:', { messageId, messageType, groupId, user: socket.username });
+        
+        if (!messageId || !messageType) {
+            if (callback) callback({ error: 'Invalid delete request' });
+            return;
+        }
+        
+        if (messageType === 'private') {
+            // Handle private message deletion
+            db.query(`SELECT * FROM messages WHERE id = ?`, 
+                [messageId],
+                (err, results) => {
+                    if (err || results.length === 0) {
+                        console.error('Message not found:', err);
+                        if (callback) callback({ error: 'Message not found' });
+                        return;
+                    }
+                    
+                    const message = results[0];
+                    const isSender = message.sender === socket.username;
+                    const isRecipient = message.recipient === socket.username;
+                    
+                    // Check if user has permission to delete
+                    if (!isSender && !isRecipient) {
+                        if (callback) callback({ error: 'You cannot delete this message' });
+                        return;
+                    }
+                    
+                    // Update deletion flags
+                    const updateFields = [];
+                    const updateValues = [];
+                    
+                    if (isSender) {
+                        updateFields.push('deleted_for_sender = TRUE');
+                    }
+                    
+                    if (isRecipient) {
+                        updateFields.push('deleted_for_recipient = TRUE');
+                    }
+                    
+                    if (updateFields.length === 0) {
+                        if (callback) callback({ error: 'Cannot delete message' });
+                        return;
+                    }
+                    
+                    updateFields.push('deleted_at = CURRENT_TIMESTAMP');
+                    
+                    db.query(`UPDATE messages SET ${updateFields.join(', ')} WHERE id = ?`,
+                        [messageId],
+                        (err) => {
+                            if (err) {
+                                console.error('Error deleting message:', err);
+                                if (callback) callback({ error: 'Failed to delete message' });
+                                return;
+                            }
+                            
+                            console.log('Private message soft deleted for user:', socket.username);
+                            
+                            // Notify the other user
+                            const otherUser = isSender ? message.recipient : message.sender;
+                            const otherSocket = Array.from(io.sockets.sockets.values())
+                                .find(s => s.username === otherUser);
+                                
+                            if (otherSocket) {
+                                otherSocket.emit('message deleted', {
+                                    messageId: messageId,
+                                    messageType: 'private',
+                                    deletedBy: socket.username
+                                });
+                            }
+                            
+                            // Send success to deleter
+                            socket.emit('message deleted', {
+                                messageId: messageId,
+                                messageType: 'private',
+                                deletedBy: socket.username
+                            });
+                            
+                            if (callback) callback({ success: true });
+                        });
+                });
+                
+        } else if (messageType === 'broadcast') {
+            // Handle broadcast message deletion
+            console.log('Processing broadcast message deletion:', messageId);
+            
+            db.query(`SELECT * FROM messages WHERE id = ?`, 
+                [messageId],
+                (err, results) => {
+                    if (err || results.length === 0) {
+                        console.error('Broadcast message not found:', err);
+                        if (callback) callback({ error: 'Message not found' });
+                        return;
+                    }
+                    
+                    const message = results[0];
+                    const isSender = message.sender === socket.username;
+                    const isBroadcast = message.recipient === 'ALL';
+                    
+                    // Validate it's a broadcast message
+                    if (!isBroadcast) {
+                        if (callback) callback({ error: 'This is not a broadcast message' });
+                        return;
+                    }
+                    
+                    // Only sender can delete broadcast messages
+                    if (!isSender) {
+                        if (callback) callback({ error: 'You can only delete your own broadcast messages' });
+                        return;
+                    }
+                    
+                    // Update deletion flag for broadcast messages
+                    db.query(`UPDATE messages SET deleted_for_sender = TRUE, deleted_at = CURRENT_TIMESTAMP WHERE id = ?`,
+                        [messageId],
+                        (err) => {
+                            if (err) {
+                                console.error('Error deleting broadcast message:', err);
+                                if (callback) callback({ error: 'Failed to delete message' });
+                                return;
+                            }
+                            
+                            console.log('Broadcast message soft deleted:', messageId, 'by:', socket.username);
+                            
+                            // Notify ALL connected clients about the deletion
+                            io.emit('message deleted', {
+                                messageId: messageId,
+                                messageType: 'broadcast',
+                                deletedBy: socket.username
+                            });
+                            
+                            if (callback) callback({ success: true });
+                        });
+                });
+                
+        } else if (messageType === 'group') {
+            // Handle group message deletion
+            if (!groupId) {
+                if (callback) callback({ error: 'Group ID required for group message deletion' });
+                return;
+            }
+            
+            db.query(`SELECT * FROM group_messages WHERE id = ? AND group_id = ?`,
+                [messageId, groupId],
+                (err, results) => {
+                    if (err || results.length === 0) {
+                        console.error('Group message not found:', err);
+                        if (callback) callback({ error: 'Message not found' });
+                        return;
+                    }
+                    
+                    const message = results[0];
+                    const isSender = message.sender === socket.username;
+                    
+                    // Check if user is group creator or message sender
+                    db.query(`SELECT created_by FROM groups WHERE group_id = ?`,
+                        [groupId],
+                        (err, groupResults) => {
+                            if (err || groupResults.length === 0) {
+                                if (callback) callback({ error: 'Group not found' });
+                                return;
+                            }
+                            
+                            const isCreator = groupResults[0].created_by === socket.username;
+                            
+                            if (!isSender && !isCreator) {
+                                if (callback) callback({ error: 'Only message sender or group creator can delete' });
+                                return;
+                            }
+                            
+                            if (isSender) {
+                                // Message sender deletes only for themselves
+                                db.query(`UPDATE group_messages SET deleted_for_sender = TRUE, deleted_at = CURRENT_TIMESTAMP WHERE id = ?`,
+                                    [messageId],
+                                    (err) => {
+                                        if (err) {
+                                            console.error('Error deleting group message:', err);
+                                            if (callback) callback({ error: 'Failed to delete message' });
+                                            return;
+                                        }
+                                        
+                                        console.log('Group message deleted for sender:', socket.username);
+                                        
+                                        // Notify sender only
+                                        socket.emit('message deleted', {
+                                            messageId: messageId,
+                                            messageType: 'group',
+                                            groupId: groupId,
+                                            deletedBy: socket.username
+                                        });
+                                        
+                                        if (callback) callback({ success: true });
+                                    });
+                            } else if (isCreator) {
+                                // Group creator deletes for everyone (but keeps record)
+                                db.query(`UPDATE group_messages SET deleted_for_group = TRUE, deleted_by = ?, deleted_at = CURRENT_TIMESTAMP WHERE id = ?`,
+                                    [socket.username, messageId],
+                                    (err) => {
+                                        if (err) {
+                                            console.error('Error deleting group message:', err);
+                                            if (callback) callback({ error: 'Failed to delete message' });
+                                            return;
+                                        }
+                                        
+                                        console.log('Group message deleted for all by creator:', socket.username);
+                                        
+                                        // Get all group members
+                                        db.query(`SELECT username FROM group_members WHERE group_id = ?`,
+                                            [groupId],
+                                            (err, members) => {
+                                                if (!err) {
+                                                    // Notify all group members
+                                                    members.forEach(member => {
+                                                        const memberSocket = Array.from(io.sockets.sockets.values())
+                                                            .find(s => s.username === member.username);
+                                                        if (memberSocket) {
+                                                            memberSocket.emit('message deleted', {
+                                                                messageId: messageId,
+                                                                messageType: 'group',
+                                                                groupId: groupId,
+                                                                deletedBy: socket.username
+                                                            });
+                                                        }
+                                                    });
+                                                }
+                                            });
+                                        
+                                        if (callback) callback({ success: true });
+                                    });
+                            }
+                        });
+                });
+        } else {
+            if (callback) callback({ error: 'Invalid message type' });
+        }
     });
 
     // Forward Message - ENHANCED VERSION FOR ALL MESSAGE TYPES
